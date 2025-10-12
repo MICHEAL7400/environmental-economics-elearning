@@ -1,5 +1,6 @@
 // client/src/components/Statistics.js
 import React from 'react';
+import './Statistics.css'
 
 const Statistics = () => {
   const statsData = {
