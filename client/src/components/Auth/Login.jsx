@@ -1,302 +1,257 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import './Auth.css';
 
 const Login = () => {
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  });
-  const [errors, setErrors] = useState({});
-  const [isLoading, setIsLoading] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const navigate = useNavigate();
+    const [formData, setFormData] = useState({
+        email: '',
+        password: ''
+    });
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
-    }
-  };
+    const { login, user } = useAuth();
+    const navigate = useNavigate();
+    const location = useLocation();
 
-  const validateForm = () => {
-    const newErrors = {};
+    const from = location.state?.from?.pathname || '/dashboard';
 
-    if (!formData.email) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email address is invalid';
-    }
+    useEffect(() => {
+        if (user) {
+            navigate(from, { replace: true });
+        }
+    }, [user, navigate, from]);
 
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
-
-    return newErrors;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const newErrors = validateForm();
-    
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
-
-    setIsLoading(true);
-    
-    try {
-      // Simulate API call - replace with your actual authentication endpoint
-      const response = await axios.post('http://localhost:5000/api/auth/login', formData);
-      
-      // Store token and user data
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      
-      // Redirect to dashboard or previous page
-      navigate('/dashboard');
-      
-    } catch (error) {
-      console.error('Login error:', error);
-      setErrors({
-        submit: error.response?.data?.message || 'Login failed. Please try again.'
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDemoLogin = (role) => {
-    const demoCredentials = {
-      student: { email: 'student@demo.com', password: 'demo123' },
-      instructor: { email: 'instructor@demo.com', password: 'demo123' },
-      policymaker: { email: 'policymaker@demo.com', password: 'demo123' }
+    const handleChange = (e) => {
+        setFormData({
+            ...formData,
+            [e.target.name]: e.target.value
+        });
+        // Clear error when user starts typing
+        if (error) setError('');
     };
-    
-    setFormData(demoCredentials[role]);
-  };
 
-  return (
-    <div className="auth-container">
-      <div className="auth-card">
-        {/* Header */}
-        <div className="auth-header">
-          <Link to="/" className="auth-logo">
-            <span className="logo-icon">🌍</span>
-            <span className="logo-text">EcoLearn</span>
-          </Link>
-          <h1>Welcome Back</h1>
-          <p>Sign in to continue your environmental economics journey</p>
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        setError('');
+
+        // Basic validation
+        if (!formData.email || !formData.password) {
+            setError('Please fill in all fields');
+            setLoading(false);
+            return;
+        }
+
+        if (!/\S+@\S+\.\S+/.test(formData.email)) {
+            setError('Please enter a valid email address');
+            setLoading(false);
+            return;
+        }
+
+        try {
+            const result = await login(formData.email, formData.password);
+            if (result.success) {
+                navigate(from, { replace: true });
+            } else {
+                setError(result.error);
+            }
+        } catch (err) {
+            setError('An unexpected error occurred. Please try again.');
+            console.error('Login error:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDemoLogin = (role) => {
+        const demoAccounts = {
+            student: { email: 'student@ecolearn.org', password: 'demo123' },
+            instructor: { email: 'instructor@ecolearn.org', password: 'demo123' },
+            admin: { email: 'admin@ecolearn.org', password: 'admin123' }
+        };
+
+        setFormData(demoAccounts[role]);
+    };
+
+    return (
+        <div className="auth-container">
+            <div className="auth-background">
+                <div className="auth-shapes">
+                    <div className="shape shape-1"></div>
+                    <div className="shape shape-2"></div>
+                    <div className="shape shape-3"></div>
+                </div>
+            </div>
+
+            <div className="auth-card">
+                <div className="auth-header">
+                    <Link to="/" className="auth-logo">
+                        <span className="logo-icon">🌍</span>
+                        <span className="logo-text">EcoLearn</span>
+                    </Link>
+                    <h1>Welcome Back!</h1>
+                    <p>Sign in to continue your environmental economics journey</p>
+                </div>
+
+                {error && (
+                    <div className="alert alert-error">
+                        <span className="alert-icon">⚠️</span>
+                        {error}
+                    </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="auth-form">
+                    <div className="form-group">
+                        <label htmlFor="email">Email Address</label>
+                        <div className="input-with-icon">
+                            <span className="input-icon">📧</span>
+                            <input
+                                type="email"
+                                id="email"
+                                name="email"
+                                value={formData.email}
+                                onChange={handleChange}
+                                placeholder="Enter your email"
+                                required
+                                disabled={loading}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="form-group">
+                        <label htmlFor="password">Password</label>
+                        <div className="input-with-icon">
+                            <span className="input-icon">🔒</span>
+                            <input
+                                type={showPassword ? "text" : "password"}
+                                id="password"
+                                name="password"
+                                value={formData.password}
+                                onChange={handleChange}
+                                placeholder="Enter your password"
+                                required
+                                disabled={loading}
+                            />
+                            <button
+                                type="button"
+                                className="password-toggle"
+                                onClick={() => setShowPassword(!showPassword)}
+                            >
+                                {showPassword ? '🙈' : '👁️'}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="form-options">
+                        <label className="checkbox-label">
+                            <input type="checkbox" />
+                            <span className="checkmark"></span>
+                            Remember me
+                        </label>
+                        <Link to="/forgot-password" className="forgot-link">
+                            Forgot password?
+                        </Link>
+                    </div>
+
+                    <button 
+                        type="submit" 
+                        className="auth-button primary"
+                        disabled={loading}
+                    >
+                        {loading ? (
+                            <>
+                                <div className="button-spinner"></div>
+                                Signing In...
+                            </>
+                        ) : (
+                            'Sign In'
+                        )}
+                    </button>
+                </form>
+
+                <div className="demo-section">
+                    <div className="demo-divider">
+                        <span>Quick Demo Access</span>
+                    </div>
+                    
+                    <div className="demo-buttons">
+                        <button
+                            type="button"
+                            className="demo-button student"
+                            onClick={() => handleDemoLogin('student')}
+                            disabled={loading}
+                        >
+                            👨‍🎓 Student Demo
+                        </button>
+                        <button
+                            type="button"
+                            className="demo-button instructor"
+                            onClick={() => handleDemoLogin('instructor')}
+                            disabled={loading}
+                        >
+                            👨‍🏫 Instructor Demo
+                        </button>
+                        <button
+                            type="button"
+                            className="demo-button admin"
+                            onClick={() => handleDemoLogin('admin')}
+                            disabled={loading}
+                        >
+                            ⚙️ Admin Demo
+                        </button>
+                    </div>
+                </div>
+
+                <div className="auth-footer">
+                    <p>
+                        Don't have an account?{' '}
+                        <Link to="/register" className="auth-link">
+                            Sign up here
+                        </Link>
+                    </p>
+                </div>
+            </div>
+
+            <div className="auth-features">
+                <div className="features-content">
+                    <h2>Continue Your Learning Journey</h2>
+                    <div className="feature-list">
+                        <div className="feature-item">
+                            <span className="feature-icon">📚</span>
+                            <div>
+                                <h4>Access All Courses</h4>
+                                <p>Continue where you left off with personalized learning paths</p>
+                            </div>
+                        </div>
+                        <div className="feature-item">
+                            <span className="feature-icon">🎯</span>
+                            <div>
+                                <h4>Track Your Progress</h4>
+                                <p>Monitor your achievements and course completion</p>
+                            </div>
+                        </div>
+                        <div className="feature-item">
+                            <span className="feature-icon">🏆</span>
+                            <div>
+                                <h4>Earn Certificates</h4>
+                                <p>Get recognized for your environmental economics expertise</p>
+                            </div>
+                        </div>
+                        <div className="feature-item">
+                            <span className="feature-icon">🌍</span>
+                            <div>
+                                <h4>Join the Community</h4>
+                                <p>Connect with fellow learners and experts</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-
-        {/* Demo Login Buttons */}
-        <div className="demo-login-section">
-          <p className="demo-label">Quick Demo Access:</p>
-          <div className="demo-buttons">
-            <button 
-              type="button"
-              className="demo-btn student"
-              onClick={() => handleDemoLogin('student')}
-            >
-              👨‍🎓 Student Demo
-            </button>
-            <button 
-              type="button"
-              className="demo-btn instructor"
-              onClick={() => handleDemoLogin('instructor')}
-            >
-              👨‍🏫 Instructor Demo
-            </button>
-            <button 
-              type="button"
-              className="demo-btn policymaker"
-              onClick={() => handleDemoLogin('policymaker')}
-            >
-              🏛️ Policy Maker Demo
-            </button>
-          </div>
-        </div>
-
-        <div className="divider">
-          <span>Or sign in with email</span>
-        </div>
-
-        {/* Login Form */}
-        <form onSubmit={handleSubmit} className="auth-form">
-          {errors.submit && (
-            <div className="error-message submit-error">
-              ⚠️ {errors.submit}
-            </div>
-          )}
-
-          <div className="form-group">
-            <label htmlFor="email">Email Address</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              className={errors.email ? 'error' : ''}
-              placeholder="Enter your email"
-            />
-            {errors.email && <span className="error-text">{errors.email}</span>}
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <div className="password-input">
-              <input
-                type={showPassword ? "text" : "password"}
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                className={errors.password ? 'error' : ''}
-                placeholder="Enter your password"
-              />
-              <button
-                type="button"
-                className="password-toggle"
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? '🙈' : '👁️'}
-              </button>
-            </div>
-            {errors.password && <span className="error-text">{errors.password}</span>}
-          </div>
-
-          <div className="form-options">
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-              />
-              <span className="checkmark"></span>
-              Remember me
-            </label>
-            <Link to="/forgot-password" className="forgot-link">
-              Forgot password?
-            </Link>
-          </div>
-
-          <button 
-            type="submit" 
-            className="auth-button primary"
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <>
-                <div className="spinner"></div>
-                Signing In...
-              </>
-            ) : (
-              'Sign In →'
-            )}
-          </button>
-        </form>
-
-        {/* Social Login */}
-        <div className="social-login">
-          <div className="divider">
-            <span>Or continue with</span>
-          </div>
-          <div className="social-buttons">
-            <button type="button" className="social-btn google">
-              <span className="social-icon">🔍</span>
-              Google
-            </button>
-            <button type="button" className="social-btn github">
-              <span className="social-icon">💻</span>
-              GitHub
-            </button>
-            <button type="button" className="social-btn linkedin">
-              <span className="social-icon">💼</span>
-              LinkedIn
-            </button>
-          </div>
-        </div>
-
-        {/* Sign Up Link */}
-        <div className="auth-footer">
-          <p>
-            Don't have an account?{' '}
-            <Link to="/register" className="auth-link">
-              Sign up for free
-            </Link>
-          </p>
-        </div>
-      </div>
-
-      {/* Welcome Side Panel */}
-      <div className="auth-welcome">
-        <div className="welcome-content">
-          <h2>Continue Your Learning Journey</h2>
-          <p>Access your courses, track progress, and join the EcoLearn community</p>
-          
-          <div className="welcome-features">
-            <div className="feature-item">
-              <span className="feature-icon">📚</span>
-              <div>
-                <h4>Your Courses</h4>
-                <p>Resume where you left off</p>
-              </div>
-            </div>
-            <div className="feature-item">
-              <span className="feature-icon">📊</span>
-              <div>
-                <h4>Progress Tracking</h4>
-                <p>Monitor your learning journey</p>
-              </div>
-            </div>
-            <div className="feature-item">
-              <span className="feature-icon">👥</span>
-              <div>
-                <h4>Community</h4>
-                <p>Connect with other learners</p>
-              </div>
-            </div>
-            <div className="feature-item">
-              <span className="feature-icon">🛠️</span>
-              <div>
-                <h4>Tools Access</h4>
-                <p>Use all our environmental tools</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="welcome-stats">
-            <div className="stat">
-              <h3>5,000+</h3>
-              <p>Active Learners</p>
-            </div>
-            <div className="stat">
-              <h3>50+</h3>
-              <p>African Countries</p>
-            </div>
-            <div className="stat">
-              <h3>98%</h3>
-              <p>Satisfaction Rate</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default Login;

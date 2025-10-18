@@ -1,441 +1,422 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { useAuth } from '../../context/AuthContext';
 import './Auth.css';
 
 const Register = () => {
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    userType: 'student',
-    country: '',
-    organization: '',
-    agreeToTerms: false
-  });
-  const [errors, setErrors] = useState({});
-  const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const navigate = useNavigate();
+    const [formData, setFormData] = useState({
+        firstName: '',
+        lastName: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        country: '',
+        userType: 'student'
+    });
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [passwordStrength, setPasswordStrength] = useState(0);
 
-  const countries = [
-    'Select Country', 'Nigeria', 'Kenya', 'South Africa', 'Ghana', 'Ethiopia',
-    'Tanzania', 'Uganda', 'Rwanda', 'Zambia', 'Zimbabwe', 'Botswana',
-    'Senegal', 'Ivory Coast', 'Cameroon', 'Other'
-  ];
+    const { register, user } = useAuth();
+    const navigate = useNavigate();
 
-  const userTypes = [
-    { value: 'student', label: '👨‍🎓 Student/Learner', description: 'I want to learn about environmental economics' },
-    { value: 'instructor', label: '👨‍🏫 Educator/Instructor', description: 'I want to teach or create content' },
-    { value: 'policymaker', label: '🏛️ Policy Maker', description: 'I work in government or policy' },
-    { value: 'professional', label: '💼 Environmental Professional', description: 'I work in environmental sector' },
-    { value: 'researcher', label: '🔬 Researcher/Academic', description: 'I conduct research or studies' },
-    { value: 'other', label: '🌍 Other', description: 'Other interests in environmental economics' }
-  ];
+    useEffect(() => {
+        if (user) {
+            navigate('/dashboard');
+        }
+    }, [user, navigate]);
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
-    
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
-    }
-  };
+    const countries = [
+        'Kenya', 'Nigeria', 'Ghana', 'South Africa', 'Ethiopia', 'Tanzania',
+        'Uganda', 'Rwanda', 'Zambia', 'Zimbabwe', 'Botswana', 'Senegal',
+        'Other'
+    ];
 
-  const validateForm = () => {
-    const newErrors = {};
+    const calculatePasswordStrength = (password) => {
+        let strength = 0;
+        if (password.length >= 8) strength += 25;
+        if (/[A-Z]/.test(password)) strength += 25;
+        if (/[0-9]/.test(password)) strength += 25;
+        if (/[^A-Za-z0-9]/.test(password)) strength += 25;
+        return strength;
+    };
 
-    if (!formData.firstName.trim()) {
-      newErrors.firstName = 'First name is required';
-    }
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData({
+            ...formData,
+            [name]: value
+        });
 
-    if (!formData.lastName.trim()) {
-      newErrors.lastName = 'Last name is required';
-    }
+        if (name === 'password') {
+            setPasswordStrength(calculatePasswordStrength(value));
+        }
 
-    if (!formData.email) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email address is invalid';
-    }
+        if (error) setError('');
+    };
 
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters';
-    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
-      newErrors.password = 'Password must contain uppercase, lowercase, and numbers';
-    }
+    const validateForm = () => {
+        if (!formData.firstName || !formData.lastName || !formData.email || !formData.password || !formData.confirmPassword) {
+            return 'Please fill in all required fields';
+        }
 
-    if (!formData.confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password';
-    } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
+        if (!/\S+@\S+\.\S+/.test(formData.email)) {
+            return 'Please enter a valid email address';
+        }
 
-    if (!formData.country || formData.country === 'Select Country') {
-      newErrors.country = 'Please select your country';
-    }
+        if (formData.password.length < 8) {
+            return 'Password must be at least 8 characters long';
+        }
 
-    if (!formData.agreeToTerms) {
-      newErrors.agreeToTerms = 'You must agree to the terms and conditions';
-    }
+        if (formData.password !== formData.confirmPassword) {
+            return 'Passwords do not match';
+        }
 
-    return newErrors;
-  };
+        if (passwordStrength < 75) {
+            return 'Please choose a stronger password';
+        }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const newErrors = validateForm();
-    
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
+        return null;
+    };
 
-    setIsLoading(true);
-    
-    try {
-      // Remove confirmPassword before sending
-      const { confirmPassword, agreeToTerms, ...submitData } = formData;
-      
-      const response = await axios.post('http://localhost:5000/api/auth/register', submitData);
-      
-      // Store token and user data
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      
-      // Redirect to onboarding or dashboard
-      navigate('/onboarding');
-      
-    } catch (error) {
-      console.error('Registration error:', error);
-      setErrors({
-        submit: error.response?.data?.message || 'Registration failed. Please try again.'
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        setError('');
 
-  const handleUserTypeSelect = (userType) => {
-    setFormData(prev => ({
-      ...prev,
-      userType
-    }));
-  };
+        const validationError = validateForm();
+        if (validationError) {
+            setError(validationError);
+            setLoading(false);
+            return;
+        }
 
-  return (
-    <div className="auth-container">
-      <div className="auth-card">
-        {/* Header */}
-        <div className="auth-header">
-          <Link to="/" className="auth-logo">
-            <span className="logo-icon">🌍</span>
-            <span className="logo-text">EcoLearn</span>
-          </Link>
-          <h1>Join EcoLearn</h1>
-          <p>Start your journey in environmental economics today</p>
-        </div>
+        try {
+            const { confirmPassword, ...submitData } = formData;
+            const result = await register(submitData);
+            
+            if (result.success) {
+                navigate('/dashboard');
+            } else {
+                setError(result.error);
+            }
+        } catch (err) {
+            setError('An unexpected error occurred. Please try again.');
+            console.error('Registration error:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-        {/* Registration Form */}
-        <form onSubmit={handleSubmit} className="auth-form">
-          {errors.submit && (
-            <div className="error-message submit-error">
-              ⚠️ {errors.submit}
-            </div>
-          )}
+    const getPasswordStrengthText = () => {
+        if (passwordStrength >= 75) return { text: 'Strong', color: 'var(--success-color)' };
+        if (passwordStrength >= 50) return { text: 'Good', color: 'var(--warning-color)' };
+        if (passwordStrength >= 25) return { text: 'Weak', color: 'var(--danger-color)' };
+        return { text: 'Very Weak', color: 'var(--danger-color)' };
+    };
 
-          {/* Name Fields */}
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="firstName">First Name</label>
-              <input
-                type="text"
-                id="firstName"
-                name="firstName"
-                value={formData.firstName}
-                onChange={handleChange}
-                className={errors.firstName ? 'error' : ''}
-                placeholder="Enter your first name"
-              />
-              {errors.firstName && <span className="error-text">{errors.firstName}</span>}
-            </div>
+    const strengthInfo = getPasswordStrengthText();
 
-            <div className="form-group">
-              <label htmlFor="lastName">Last Name</label>
-              <input
-                type="text"
-                id="lastName"
-                name="lastName"
-                value={formData.lastName}
-                onChange={handleChange}
-                className={errors.lastName ? 'error' : ''}
-                placeholder="Enter your last name"
-              />
-              {errors.lastName && <span className="error-text">{errors.lastName}</span>}
-            </div>
-          </div>
-
-          {/* Email */}
-          <div className="form-group">
-            <label htmlFor="email">Email Address</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              className={errors.email ? 'error' : ''}
-              placeholder="Enter your email address"
-            />
-            {errors.email && <span className="error-text">{errors.email}</span>}
-          </div>
-
-          {/* User Type Selection */}
-          <div className="form-group">
-            <label>I am a...</label>
-            <div className="user-type-grid">
-              {userTypes.map((type) => (
-                <div
-                  key={type.value}
-                  className={`user-type-card ${
-                    formData.userType === type.value ? 'selected' : ''
-                  }`}
-                  onClick={() => handleUserTypeSelect(type.value)}
-                >
-                  <div className="user-type-header">
-                    <span className="user-type-icon">{type.label.split(' ')[0]}</span>
-                    <div className="user-type-info">
-                      <h4>{type.label.split(' ').slice(1).join(' ')}</h4>
-                      <p>{type.description}</p>
-                    </div>
-                  </div>
+    return (
+        <div className="auth-container">
+            <div className="auth-background">
+                <div className="auth-shapes">
+                    <div className="shape shape-1"></div>
+                    <div className="shape shape-2"></div>
+                    <div className="shape shape-3"></div>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Location */}
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="country">Country</label>
-              <select
-                id="country"
-                name="country"
-                value={formData.country}
-                onChange={handleChange}
-                className={errors.country ? 'error' : ''}
-              >
-                {countries.map(country => (
-                  <option key={country} value={country}>
-                    {country}
-                  </option>
-                ))}
-              </select>
-              {errors.country && <span className="error-text">{errors.country}</span>}
             </div>
 
-            <div className="form-group">
-              <label htmlFor="organization">Organization (Optional)</label>
-              <input
-                type="text"
-                id="organization"
-                name="organization"
-                value={formData.organization}
-                onChange={handleChange}
-                placeholder="University, Company, etc."
-              />
+            <div className="auth-card">
+                <div className="auth-header">
+                    <Link to="/" className="auth-logo">
+                        <span className="logo-icon">🌍</span>
+                        <span className="logo-text">EcoLearn</span>
+                    </Link>
+                    <h1>Join EcoLearn Today! 🌱</h1>
+                    <p>Start your journey in environmental economics</p>
+                </div>
+
+                {error && (
+                    <div className="alert alert-error">
+                        <span className="alert-icon">⚠️</span>
+                        {error}
+                    </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="auth-form">
+                    <div className="form-row">
+                        <div className="form-group">
+                            <label htmlFor="firstName">First Name *</label>
+                            <div className="input-with-icon">
+                                <span className="input-icon">👤</span>
+                                <input
+                                    type="text"
+                                    id="firstName"
+                                    name="firstName"
+                                    value={formData.firstName}
+                                    onChange={handleChange}
+                                    placeholder="Enter your first name"
+                                    required
+                                    disabled={loading}
+                                />
+                            </div>
+                        </div>
+                        <div className="form-group">
+                            <label htmlFor="lastName">Last Name *</label>
+                            <div className="input-with-icon">
+                                <span className="input-icon">👤</span>
+                                <input
+                                    type="text"
+                                    id="lastName"
+                                    name="lastName"
+                                    value={formData.lastName}
+                                    onChange={handleChange}
+                                    placeholder="Enter your last name"
+                                    required
+                                    disabled={loading}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="form-group">
+                        <label htmlFor="email">Email Address *</label>
+                        <div className="input-with-icon">
+                            <span className="input-icon">📧</span>
+                            <input
+                                type="email"
+                                id="email"
+                                name="email"
+                                value={formData.email}
+                                onChange={handleChange}
+                                placeholder="Enter your email"
+                                required
+                                disabled={loading}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="form-row">
+                        <div className="form-group">
+                            <label htmlFor="userType">I am a *</label>
+                            <div className="input-with-icon">
+                                <span className="input-icon">🎯</span>
+                                <select
+                                    id="userType"
+                                    name="userType"
+                                    value={formData.userType}
+                                    onChange={handleChange}
+                                    required
+                                    disabled={loading}
+                                >
+                                    <option value="student">Student</option>
+                                    <option value="instructor">Instructor</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div className="form-group">
+                            <label htmlFor="country">Country *</label>
+                            <div className="input-with-icon">
+                                <span className="input-icon">🌍</span>
+                                <select
+                                    id="country"
+                                    name="country"
+                                    value={formData.country}
+                                    onChange={handleChange}
+                                    required
+                                    disabled={loading}
+                                >
+                                    <option value="">Select your country</option>
+                                    {countries.map(country => (
+                                        <option key={country} value={country}>
+                                            {country}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="form-group">
+                        <label htmlFor="password">Password *</label>
+                        <div className="input-with-icon">
+                            <span className="input-icon">🔒</span>
+                            <input
+                                type={showPassword ? "text" : "password"}
+                                id="password"
+                                name="password"
+                                value={formData.password}
+                                onChange={handleChange}
+                                placeholder="Create a strong password"
+                                required
+                                disabled={loading}
+                            />
+                            <button
+                                type="button"
+                                className="password-toggle"
+                                onClick={() => setShowPassword(!showPassword)}
+                            >
+                                {showPassword ? '🙈' : '👁️'}
+                            </button>
+                        </div>
+                        
+                        {formData.password && (
+                            <div className="password-strength">
+                                <div className="strength-bar">
+                                    <div 
+                                        className="strength-fill"
+                                        style={{
+                                            width: `${passwordStrength}%`,
+                                            backgroundColor: strengthInfo.color
+                                        }}
+                                    ></div>
+                                </div>
+                                <span 
+                                    className="strength-text"
+                                    style={{ color: strengthInfo.color }}
+                                >
+                                    {strengthInfo.text}
+                                </span>
+                            </div>
+                        )}
+
+                        <div className="password-requirements">
+                            <p>Password must contain:</p>
+                            <ul>
+                                <li className={formData.password.length >= 8 ? 'met' : ''}>
+                                    At least 8 characters
+                                </li>
+                                <li className={/[A-Z]/.test(formData.password) ? 'met' : ''}>
+                                    One uppercase letter
+                                </li>
+                                <li className={/[0-9]/.test(formData.password) ? 'met' : ''}>
+                                    One number
+                                </li>
+                                <li className={/[^A-Za-z0-9]/.test(formData.password) ? 'met' : ''}>
+                                    One special character
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div className="form-group">
+                        <label htmlFor="confirmPassword">Confirm Password *</label>
+                        <div className="input-with-icon">
+                            <span className="input-icon">🔒</span>
+                            <input
+                                type={showPassword ? "text" : "password"}
+                                id="confirmPassword"
+                                name="confirmPassword"
+                                value={formData.confirmPassword}
+                                onChange={handleChange}
+                                placeholder="Confirm your password"
+                                required
+                                disabled={loading}
+                            />
+                        </div>
+                        {formData.confirmPassword && formData.password !== formData.confirmPassword && (
+                            <div className="input-error">Passwords do not match</div>
+                        )}
+                    </div>
+
+                    <div className="form-options">
+                        <label className="checkbox-label">
+                            <input 
+                                type="checkbox" 
+                                required 
+                            />
+                            <span className="checkmark"></span>
+                            I agree to the{' '}
+                            <Link to="/terms" className="inline-link">
+                                Terms of Service
+                            </Link>{' '}
+                            and{' '}
+                            <Link to="/privacy" className="inline-link">
+                                Privacy Policy
+                            </Link>
+                        </label>
+                    </div>
+
+                    <button 
+                        type="submit" 
+                        className="auth-button primary"
+                        disabled={loading}
+                    >
+                        {loading ? (
+                            <>
+                                <div className="button-spinner"></div>
+                                Creating Account...
+                            </>
+                        ) : (
+                            'Create Account'
+                        )}
+                    </button>
+                </form>
+
+                <div className="auth-footer">
+                    <p>
+                        Already have an account?{' '}
+                        <Link to="/login" className="auth-link">
+                            Sign in here
+                        </Link>
+                    </p>
+                </div>
             </div>
-          </div>
 
-          {/* Password Fields */}
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <div className="password-input">
-              <input
-                type={showPassword ? "text" : "password"}
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                className={errors.password ? 'error' : ''}
-                placeholder="Create a strong password"
-              />
-              <button
-                type="button"
-                className="password-toggle"
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? '🙈' : '👁️'}
-              </button>
+            <div className="auth-features">
+                <div className="features-content">
+                    <h2>Why Join EcoLearn?</h2>
+                    <div className="feature-list">
+                        <div className="feature-item">
+                            <span className="feature-icon">🎓</span>
+                            <div>
+                                <h4>Expert-Led Courses</h4>
+                                <p>Learn from leading environmental economics experts</p>
+                            </div>
+                        </div>
+                        <div className="feature-item">
+                            <span className="feature-icon">🛠️</span>
+                            <div>
+                                <h4>Practical Tools</h4>
+                                <p>Access calculators and analysis tools for real-world applications</p>
+                            </div>
+                        </div>
+                        <div className="feature-item">
+                            <span className="feature-icon">📖</span>
+                            <div>
+                                <h4>African Case Studies</h4>
+                                <p>Learn through context-specific African examples</p>
+                            </div>
+                        </div>
+                        <div className="feature-item">
+                            <span className="feature-icon">🤝</span>
+                            <div>
+                                <h4>Global Community</h4>
+                                <p>Connect with environmental professionals across Africa</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="stats-preview">
+                        <div className="stat">
+                            <h3>15,000+</h3>
+                            <p>Active Learners</p>
+                        </div>
+                        <div className="stat">
+                            <h3>50+</h3>
+                            <p>Expert Courses</p>
+                        </div>
+                        <div className="stat">
+                            <h3>25+</h3>
+                            <p>African Countries</p>
+                        </div>
+                    </div>
+                </div>
             </div>
-            {errors.password && <span className="error-text">{errors.password}</span>}
-            <div className="password-strength">
-              <div className={`strength-bar ${formData.password.length >= 8 ? 'strong' : 'weak'}`}></div>
-              <span className="strength-text">
-                {formData.password.length >= 8 ? 'Strong password' : 'Weak password'}
-              </span>
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="confirmPassword">Confirm Password</label>
-            <div className="password-input">
-              <input
-                type={showConfirmPassword ? "text" : "password"}
-                id="confirmPassword"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                className={errors.confirmPassword ? 'error' : ''}
-                placeholder="Confirm your password"
-              />
-              <button
-                type="button"
-                className="password-toggle"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              >
-                {showConfirmPassword ? '🙈' : '👁️'}
-              </button>
-            </div>
-            {errors.confirmPassword && <span className="error-text">{errors.confirmPassword}</span>}
-          </div>
-
-          {/* Terms Agreement */}
-          <div className="form-group">
-            <label className="checkbox-label terms">
-              <input
-                type="checkbox"
-                name="agreeToTerms"
-                checked={formData.agreeToTerms}
-                onChange={handleChange}
-              />
-              <span className="checkmark"></span>
-              I agree to the{' '}
-              <Link to="/terms" className="inline-link">Terms of Service</Link>
-              {' '}and{' '}
-              <Link to="/privacy" className="inline-link">Privacy Policy</Link>
-            </label>
-            {errors.agreeToTerms && <span className="error-text">{errors.agreeToTerms}</span>}
-          </div>
-
-          <button 
-            type="submit" 
-            className="auth-button primary"
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <>
-                <div className="spinner"></div>
-                Creating Account...
-              </>
-            ) : (
-              'Create Account →'
-            )}
-          </button>
-        </form>
-
-        {/* Social Sign Up */}
-        <div className="social-login">
-          <div className="divider">
-            <span>Or sign up with</span>
-          </div>
-          <div className="social-buttons">
-            <button type="button" className="social-btn google">
-              <span className="social-icon">🔍</span>
-              Google
-            </button>
-            <button type="button" className="social-btn github">
-              <span className="social-icon">💻</span>
-              GitHub
-            </button>
-          </div>
         </div>
-
-        {/* Login Link */}
-        <div className="auth-footer">
-          <p>
-            Already have an account?{' '}
-            <Link to="/login" className="auth-link">
-              Sign in here
-            </Link>
-          </p>
-        </div>
-      </div>
-
-      {/* Benefits Side Panel */}
-      <div className="auth-welcome">
-        <div className="welcome-content">
-          <h2>Why Join EcoLearn?</h2>
-          <p>Be part of Africa's premier environmental economics learning community</p>
-          
-          <div className="welcome-features">
-            <div className="feature-item">
-              <span className="feature-icon">🎓</span>
-              <div>
-                <h4>Expert-Led Courses</h4>
-                <p>Learn from leading African environmental economists</p>
-              </div>
-            </div>
-            <div className="feature-item">
-              <span className="feature-icon">🌍</span>
-              <div>
-                <h4>African Context</h4>
-                <p>Content tailored for African challenges and opportunities</p>
-              </div>
-            </div>
-            <div className="feature-item">
-              <span className="feature-icon">🛠️</span>
-              <div>
-                <h4>Practical Tools</h4>
-                <p>Access calculators, simulators, and analysis tools</p>
-              </div>
-            </div>
-            <div className="feature-item">
-              <span className="feature-icon">👥</span>
-              <div>
-                <h4>Network</h4>
-                <p>Connect with professionals across Africa</p>
-              </div>
-            </div>
-            <div className="feature-item">
-              <span className="feature-icon">📈</span>
-              <div>
-                <h4>Career Growth</h4>
-                <p>Advance your career in green economy sectors</p>
-              </div>
-            </div>
-            <div className="feature-item">
-              <span className="feature-icon">💚</span>
-              <div>
-                <h4>Make Impact</h4>
-                <p>Contribute to sustainable development in Africa</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="testimonial">
-            <p>"EcoLearn transformed how I approach environmental policy in my work. The African-focused content is invaluable!"</p>
-            <div className="testimonial-author">
-              <strong>Dr. Sarah K.</strong>
-              <span>Policy Advisor, Nairobi</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default Register;

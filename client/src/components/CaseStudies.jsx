@@ -1,5 +1,6 @@
 // client/src/components/CaseStudies.js
 import React, { useState } from 'react';
+import './CaseStudies.css';
 
 const CaseStudies = () => {
   const [filter, setFilter] = useState('all');

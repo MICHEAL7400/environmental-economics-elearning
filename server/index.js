@@ -1,519 +1,790 @@
-// server/index.js - MEGA EXPANSION
 const express = require('express');
 const cors = require('cors');
-const mongoose = require('mongoose');
+const mysql = require('mysql2/promise');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const app = express();
 
+// Middleware
 app.use(cors());
 app.use(express.json());
 
-// MEGA COURSE CATALOG
-app.get('/api/courses', (req, res) => {
-  const courses = [
-    // ... previous courses PLUS NEW ONES ...
-    {
-      id: 7,
-      title: 'Climate Finance and Green Investment',
-      description: 'Master climate finance mechanisms, green bonds, and investment strategies for sustainable development in African markets.',
-      duration: '70 min',
-      level: 'Advanced',
-      category: 'finance',
-      students: 420,
-      rating: 4.7,
-      modules: 5,
-      instructor: 'Dr. Finance Green',
-      image: '💹',
-      learningObjectives: [
-        'Analyze climate finance instruments and markets',
-        'Evaluate green investment opportunities in Africa',
-        'Understand carbon credit trading mechanisms',
-        'Design sustainable investment portfolios'
-      ],
-      syllabus: [
-        'Introduction to Climate Finance',
-        'Green Bonds and Sustainable Investing',
-        'Carbon Markets and Trading',
-        'African Climate Fund Opportunities',
-        'Case Study: Nigeria Green Bonds'
-      ]
-    },
-    {
-      id: 8,
-      title: 'Circular Economy and Waste Management Economics',
-      description: 'Explore the economic principles behind circular economy models and sustainable waste management systems in urban Africa.',
-      duration: '55 min',
-      level: 'Intermediate',
-      category: 'circular-economy',
-      students: 380,
-      rating: 4.5,
-      modules: 4,
-      instructor: 'Prof. Cycle Waste',
-      image: '🔄',
-      learningObjectives: [
-        'Understand circular economy business models',
-        'Analyze waste-to-energy economic viability',
-        'Evaluate recycling market dynamics',
-        'Design sustainable urban waste systems'
-      ],
-      syllabus: [
-        'Circular Economy Fundamentals',
-        'Waste Management Economics',
-        'Recycling Market Analysis',
-        'Urban Sustainability Case Studies'
-      ]
-    },
-    {
-      id: 9,
-      title: 'Biodiversity and Ecosystem Services Valuation',
-      description: 'Learn how to economically value biodiversity, ecosystem services, and natural capital for better conservation decisions.',
-      duration: '65 min',
-      level: 'Advanced',
-      category: 'biodiversity',
-      students: 290,
-      rating: 4.8,
-      modules: 5,
-      instructor: 'Dr. Bio Diversity',
-      image: '🦁',
-      learningObjectives: [
-        'Value ecosystem services economically',
-        'Analyze conservation cost-benefit ratios',
-        'Understand payment for ecosystem services',
-        'Design biodiversity offset mechanisms'
-      ],
-      syllabus: [
-        'Ecosystem Services Valuation Methods',
-        'Conservation Economics',
-        'Payment for Ecosystem Services (PES)',
-        'Biodiversity Offsets',
-        'Case Study: Congo Basin Forests'
-      ]
-    },
-    {
-      id: 10,
-      title: 'Environmental Justice and Equity Economics',
-      description: 'Examine the economic dimensions of environmental justice, equity, and inclusive green growth in African contexts.',
-      duration: '60 min',
-      level: 'Intermediate',
-      category: 'justice',
-      students: 510,
-      rating: 4.6,
-      modules: 4,
-      instructor: 'Prof. Justice Equal',
-      image: '⚖️',
-      learningObjectives: [
-        'Analyze environmental inequality economics',
-        'Evaluate just transition frameworks',
-        'Understand green job creation economics',
-        'Design inclusive climate policies'
-      ],
-      syllabus: [
-        'Environmental Justice Economics',
-        'Just Transition Frameworks',
-        'Green Job Creation',
-        'Inclusive Policy Design'
-      ]
-    }
-  ];
-  res.json(courses);
-});
+// Database connection
+const dbConfig = {
+    host: process.env.DB_HOST || 'localhost',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'ecolearn',
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
+};
 
-// DEEP DIVE MODULES WITH RICH CONTENT
-app.get('/api/courses/:id/modules', (req, res) => {
-  const allModules = {
-    7: [
-      {
-        id: 1,
-        title: 'Climate Finance Instruments and Mechanisms',
-        content: `
-          <h3>Understanding Climate Finance Landscape</h3>
-          <p>Climate finance refers to local, national, or transnational financing—drawn from public, private and alternative sources of financing—that seeks to support mitigation and adaptation actions that will address climate change.</p>
-          
-          <h4>Key Climate Finance Instruments:</h4>
-          <div class="finance-grid">
-            <div class="instrument-card">
-              <h5>🌱 Green Bonds</h5>
-              <p><strong>Definition:</strong> Fixed-income instruments specifically earmarked to raise money for climate and environmental projects.</p>
-              <p><strong>African Example:</strong> Nigeria's $1.2 billion sovereign green bond (2023) funding renewable energy and afforestation.</p>
-              <p><strong>Market Size:</strong> Global green bond market reached $2.5 trillion in 2024, with Africa representing 3% share.</p>
-            </div>
-            
-            <div class="instrument-card">
-              <h5>💸 Climate Funds</h5>
-              <p><strong>Definition:</strong> Dedicated funding mechanisms for climate action, often managed by multilateral institutions.</p>
-              <p><strong>African Example:</strong> Green Climate Fund allocating $850 million to African renewable energy projects (2024-2026).</p>
-              <p><strong>Key Funds:</strong> GCF, Adaptation Fund, Climate Investment Funds</p>
-            </div>
-            
-            <div class="instrument-card">
-              <h5>📊 Carbon Markets</h5>
-              <p><strong>Definition:</strong> Trading systems where carbon credits are sold and bought to offset emissions.</p>
-              <p><strong>African Example:</strong> East African Carbon Exchange facilitating $45 million in trades annually.</p>
-              <p><strong>Growth:</strong> African carbon market projected to reach $5 billion by 2030.</p>
-            </div>
-          </div>
+const pool = mysql.createPool(dbConfig);
 
-          <h4>African Climate Finance Flows (2024):</h4>
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Source</th>
-                <th>Amount (USD)</th>
-                <th>Primary Sectors</th>
-                <th>Growth Rate</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Multilateral Funds</td>
-                <td>$4.2 billion</td>
-                <td>Renewable Energy, Adaptation</td>
-                <td>+15% annually</td>
-              </tr>
-              <tr>
-                <td>Private Investment</td>
-                <td>$8.7 billion</td>
-                <td>Solar, Wind, Green Infrastructure</td>
-                <td>+22% annually</td>
-              </tr>
-              <tr>
-                <td>Domestic Budgets</td>
-                <td>$12.5 billion</td>
-                <td>Agriculture, Water, Energy</td>
-                <td>+8% annually</td>
-              </tr>
-              <tr>
-                <td>Philanthropic</td>
-                <td>$850 million</td>
-                <td>Conservation, Resilience</td>
-                <td>+18% annually</td>
-              </tr>
-            </tbody>
-          </table>
+// Initialize database with admin user
+const initializeDatabase = async () => {
+    try {
+        // Check if admin user exists
+        const [adminUsers] = await pool.execute(
+            'SELECT id FROM users WHERE email = ?', 
+            ['admin@ecolearn.org']
+        );
 
-          <h4>Case Study: Zambia Climate Finance Readiness</h4>
-          <p>Zambia has developed a comprehensive climate finance strategy focusing on:</p>
-          <ul>
-            <li><strong>National Climate Fund:</strong> Established with $50 million seed funding</li>
-            <li><strong>Green Bond Framework:</strong> Developed in partnership with IFC</li>
-            <li><strong>Carbon Market Strategy:</strong> Targeting REDD+ and renewable energy credits</li>
-            <li><strong>Private Sector Mobilization:</strong> Tax incentives for green investments</li>
-          </ul>
-          
-          <div class="interactive-element">
-            <h5>📈 Investment Opportunity Calculator</h5>
-            <p>Calculate potential returns on solar energy investments in Zambia:</p>
-            <div class="calculator">
-              <label>Investment Amount (USD):</label>
-              <input type="number" id="investmentAmount" placeholder="e.g., 100000">
-              <label>Project Location:</label>
-              <select id="projectLocation">
-                <option value="lusaka">Lusaka</option>
-                <option value="copperbelt">Copperbelt</option>
-                <option value="southern">Southern Province</option>
-              </select>
-              <button onclick="calculateROI()">Calculate ROI</button>
-              <div id="roiResult"></div>
-            </div>
-          </div>
-        `,
-        duration: '25 min',
-        interactive: true,
-        resources: [
-          { type: 'pdf', title: 'African Climate Finance Report 2024', url: '#' },
-          { type: 'tool', title: 'Climate Investment Calculator', url: '#' },
-          { type: 'dataset', title: 'African Green Bond Database', url: '#' }
-        ]
-      }
-    ],
-    8: [
-      {
-        id: 1,
-        title: 'Circular Economy Business Models',
-        content: `
-          <h3>Transforming Waste into Wealth</h3>
-          <p>The circular economy represents a $4.5 trillion opportunity globally by 2030. In Africa, innovative business models are turning waste challenges into economic opportunities.</p>
-          
-          <h4>African Circular Economy Success Stories:</h4>
-          <div class="case-study-grid">
-            <div class="success-story">
-              <h5>🇳🇬 Wecyclers (Nigeria)</h5>
-              <p><strong>Model:</strong> Incentive-based waste collection using mobile technology</p>
-              <p><strong>Impact:</strong> Collected 3,000+ tons of recyclables, created 500+ jobs</p>
-              <p><strong>Economics:</strong> $2.1 million revenue, 35% profit margin</p>
-            </div>
-            
-            <div class="success-story">
-              <h5>🇰🇪 Sanergy (Kenya)</h5>
-              <p><strong>Model:</strong> Container-based sanitation with waste-to-fertilizer conversion</p>
-              <p><strong>Impact:</strong> Serves 140,000+ urban residents daily</p>
-              <p><strong>Economics:</strong> $4.8 million annual revenue, 100,000+ tons organic fertilizer produced</p>
-            </div>
-            
-            <div class="success-story">
-              <h5>🇿🇲 Zambian Waste Plastic Initiative</h5>
-              <p><strong>Model:</strong> Community-based plastic collection and recycling</p>
-              <p><strong>Impact:</strong> 200+ collection points, 5,000+ households engaged</p>
-              <p><strong>Economics:</strong> $450,000 annual turnover, 120 direct jobs created</p>
-            </div>
-          </div>
-
-          <h4>Circular Economy Value Chain Analysis:</h4>
-          <div class="value-chain">
-            <div class="chain-step">
-              <h6>1. Collection & Sorting</h6>
-              <p><strong>Economic Value:</strong> $50-150/ton</p>
-              <p><strong>Employment:</strong> 10-50 jobs per 10,000 population</p>
-              <p><strong>Technology:</strong> Smart bins, mobile apps, sorting facilities</p>
-            </div>
-            <div class="chain-step">
-              <h6>2. Processing & Manufacturing</h6>
-              <p><strong>Economic Value:</strong> $200-800/ton</p>
-              <p><strong>Employment:</strong> 5-20 jobs per facility</p>
-              <p><strong>Technology:</strong> Recycling machinery, 3D printing, composting</p>
-            </div>
-            <div class="chain-step">
-              <h6>3. Market & Distribution</h6>
-              <p><strong>Economic Value:</strong> $100-500/ton</p>
-              <p><strong>Employment:</strong> 3-15 jobs per distribution network</p>
-              <p><strong>Technology:</strong> E-commerce platforms, logistics networks</p>
-            </div>
-          </div>
-
-          <h4>Waste-to-Energy Economic Analysis:</h4>
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Technology</th>
-                <th>Capital Cost (USD/kW)</th>
-                <th>Operating Cost (USD/MWh)</th>
-                <th>Revenue Potential (USD/MWh)</th>
-                <th>Payback Period</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Incineration</td>
-                <td>$3,500-5,000</td>
-                <td>$45-65</td>
-                <td>$80-120</td>
-                <td>8-12 years</td>
-              </tr>
-              <tr>
-                <td>Anaerobic Digestion</td>
-                <td>$2,000-3,500</td>
-                <td>$30-50</td>
-                <td>$70-100</td>
-                <td>6-9 years</td>
-              </tr>
-              <tr>
-                <td>Gasification</td>
-                <td>$4,000-6,000</td>
-                <td>$50-75</td>
-                <td>$90-140</td>
-                <td>10-15 years</td>
-              </tr>
-              <tr>
-                <td>Landfill Gas</td>
-                <td>$1,500-2,500</td>
-                <td>$20-35</td>
-                <td>$50-80</td>
-                <td>4-7 years</td>
-              </tr>
-            </tbody>
-          </table>
-
-          <div class="business-plan-template">
-            <h5>📊 Circular Economy Business Plan Template</h5>
-            <p>Download our comprehensive template for developing circular economy ventures:</p>
-            <ul>
-              <li>Market analysis and opportunity assessment</li>
-              <li>Financial projections and revenue models</li>
-              <li>Regulatory compliance checklist</li>
-              <li>Impact measurement framework</li>
-              <li>Funding and investment strategy</li>
-            </ul>
-            <button class="download-btn">📥 Download Business Plan Template</button>
-          </div>
-        `,
-        duration: '30 min',
-        caseStudy: true,
-        resources: [
-          { type: 'template', title: 'Circular Business Model Canvas', url: '#' },
-          { type: 'dataset', title: 'African Waste Management Costs Database', url: '#' },
-          { type: 'guide', title: 'Waste-to-Energy Feasibility Guide', url: '#' }
-        ]
-      }
-    ]
-  };
-  
-  res.json(allModules[req.params.id] || []);
-});
-
-// NEW: PRACTICAL TOOLS AND CALCULATORS
-app.get('/api/tools', (req, res) => {
-  const tools = [
-    {
-      id: 1,
-      name: 'Carbon Footprint Calculator',
-      description: 'Calculate organizational or personal carbon emissions with African-specific factors',
-      category: 'calculator',
-      url: '/tools/carbon-calculator',
-      icon: '📊'
-    },
-    {
-      id: 2,
-      name: 'Environmental Cost-Benefit Analysis Tool',
-      description: 'Analyze economic viability of environmental projects with built-in African context',
-      category: 'analysis',
-      url: '/tools/cba-tool',
-      icon: '💰'
-    },
-    {
-      id: 3,
-      name: 'Green Investment ROI Calculator',
-      description: 'Calculate returns on renewable energy, conservation, and sustainability investments',
-      category: 'finance',
-      url: '/tools/roi-calculator',
-      icon: '📈'
-    },
-    {
-      id: 4,
-      name: 'Policy Impact Simulator',
-      description: 'Simulate economic impacts of environmental policies in African contexts',
-      category: 'policy',
-      url: '/tools/policy-simulator',
-      icon: '⚖️'
-    }
-  ];
-  res.json(tools);
-});
-
-// NEW: CASE STUDY LIBRARY
-app.get('/api/case-studies', (req, res) => {
-  const caseStudies = [
-    {
-      id: 1,
-      title: 'Kafue River Pollution: Economic Impact Assessment',
-      country: 'Zambia',
-      sector: 'Mining',
-      year: 2025,
-      summary: 'Comprehensive analysis of the Sino-Metals dam collapse economic consequences',
-      keyFindings: [
-        'Total economic cost: $285 million',
-        '25,000 jobs directly affected',
-        '15-year recovery timeline',
-        'Policy reforms implemented'
-      ],
-      lessons: [
-        'Need for stronger environmental bonds',
-        'Importance of independent monitoring',
-        'Community engagement protocols',
-        'Emergency response planning'
-      ],
-      resources: ['Full report', 'Economic data', 'Policy recommendations']
-    },
-    {
-      id: 2,
-      title: 'Rwanda Green City Master Plan',
-      country: 'Rwanda',
-      sector: 'Urban Development',
-      year: 2024,
-      summary: 'Economic analysis of Africa\'s first green city development',
-      keyFindings: [
-        '30% cost savings through green design',
-        '15,000 green jobs created',
-        '60% reduction in carbon emissions',
-        '5-year ROI on green infrastructure'
-      ],
-      lessons: [
-        'Integrated planning approach',
-        'Public-private partnership models',
-        'Community co-design benefits',
-        'Scalable green urban solutions'
-      ],
-      resources: ['Master plan', 'Economic model', 'Implementation guide']
-    }
-  ];
-  res.json(caseStudies);
-});
-
-// NEW: POLICY DATABASE
-app.get('/api/policies', (req, res) => {
-  const policies = [
-    {
-      id: 1,
-      name: 'Zambia Environmental Management Act 2024',
-      country: 'Zambia',
-      type: 'Legislation',
-      status: 'Active',
-      summary: 'Comprehensive environmental protection and management framework',
-      keyProvisions: [
-        'Environmental impact assessment requirements',
-        'Pollution control standards',
-        'Natural resource management',
-        'Climate change adaptation'
-      ],
-      economicInstruments: [
-        'Environmental taxes',
-        'Trading schemes',
-        'Subsidies for green tech',
-        'Performance bonds'
-      ]
-    },
-    {
-      id: 2,
-      name: 'Kenya Climate Change Act 2023',
-      country: 'Kenya',
-      type: 'Legislation',
-      status: 'Active',
-      summary: 'Framework for climate change response and low-carbon development',
-      keyProvisions: [
-        'Carbon budgeting system',
-        'Climate finance mechanisms',
-        'Sectoral emission targets',
-        'Adaptation planning'
-      ],
-      economicInstruments: [
-        'Carbon tax',
-        'Green bonds framework',
-        'Renewable energy incentives',
-        'Climate risk disclosure'
-      ]
-    }
-  ];
-  res.json(policies);
-});
-
-// NEW: DATA AND STATISTICS
-app.get('/api/statistics', (req, res) => {
-  const stats = {
-    environmentalEconomics: {
-      africaGreenGrowth: {
-        title: 'Green Growth Indicators - Africa',
-        data: {
-          renewableEnergyInvestment: { value: 28.5, unit: 'billion USD', growth: '+18%' },
-          greenJobs: { value: 2.3, unit: 'million', growth: '+12%' },
-          carbonMarketValue: { value: 4.2, unit: 'billion USD', growth: '+25%' },
-          sustainableAgriculture: { value: 15.7, unit: 'billion USD investment', growth: '+8%' }
+        if (adminUsers.length === 0) {
+            // Create admin user
+            const hashedPassword = await bcrypt.hash('admin123', 12);
+            await pool.execute(
+                `INSERT INTO users (first_name, last_name, email, password, user_type, country, avatar) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                ['Admin', 'User', 'admin@ecolearn.org', hashedPassword, 'admin', 'Global', '👨‍💼']
+            );
+            console.log('✅ Admin user created: admin@ecolearn.org / admin123');
         }
-      },
-      zambiaEnvironmental: {
-        title: 'Zambia Environmental Economics 2024',
-        data: {
-          miningEnvironmentalCosts: { value: 450, unit: 'million USD annually' },
-          renewableEnergyPotential: { value: 6000, unit: 'MW untapped' },
-          forestConservationValue: { value: 1.2, unit: 'billion USD ecosystem services' },
-          climateFinanceFlows: { value: 125, unit: 'million USD annually' }
+
+        // Create demo users
+        const demoUsers = [
+            {
+                email: 'student@ecolearn.org',
+                password: 'demo123',
+                firstName: 'John',
+                lastName: 'Student',
+                userType: 'student',
+                country: 'Kenya',
+                avatar: '👨‍🎓'
+            },
+            {
+                email: 'instructor@ecolearn.org',
+                password: 'demo123',
+                firstName: 'Dr. Jane',
+                lastName: 'Instructor',
+                userType: 'instructor',
+                country: 'Nigeria',
+                avatar: '👩‍🏫'
+            }
+        ];
+
+        for (const user of demoUsers) {
+            const [existing] = await pool.execute(
+                'SELECT id FROM users WHERE email = ?', 
+                [user.email]
+            );
+
+            if (existing.length === 0) {
+                const hashedPassword = await bcrypt.hash(user.password, 12);
+                await pool.execute(
+                    `INSERT INTO users (first_name, last_name, email, password, user_type, country, avatar) 
+                     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                    [user.firstName, user.lastName, user.email, hashedPassword, user.userType, user.country, user.avatar]
+                );
+                console.log(`✅ ${user.userType} user created: ${user.email} / ${user.password}`);
+            }
         }
-      }
+    } catch (error) {
+        console.error('Database initialization error:', error);
     }
-  };
-  res.json(stats);
+};
+
+// Initialize database when server starts
+initializeDatabase();
+
+// JWT middleware
+const authenticateToken = async (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({ error: 'Access token required' });
+    }
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+        const [users] = await pool.execute(
+            'SELECT id, first_name, last_name, email, user_type, avatar, country FROM users WHERE id = ?', 
+            [decoded.userId]
+        );
+        
+        if (users.length === 0) {
+            return res.status(401).json({ error: 'Invalid token' });
+        }
+
+        req.user = users[0];
+        next();
+    } catch (error) {
+        return res.status(403).json({ error: 'Invalid token' });
+    }
+};
+
+// Admin middleware
+const requireAdmin = (req, res, next) => {
+    if (req.user.user_type !== 'admin') {
+        return res.status(403).json({ error: 'Admin access required' });
+    }
+    next();
+};
+
+// Instructor middleware
+const requireInstructor = (req, res, next) => {
+    if (!['admin', 'instructor'].includes(req.user.user_type)) {
+        return res.status(403).json({ error: 'Instructor access required' });
+    }
+    next();
+};
+
+// Auth Routes
+app.post('/api/auth/register', async (req, res) => {
+    try {
+        const { firstName, lastName, email, password, country, userType = 'student' } = req.body;
+
+        // Validate user type
+        const allowedUserTypes = ['student', 'instructor'];
+        if (!allowedUserTypes.includes(userType)) {
+            return res.status(400).json({ error: 'Invalid user type' });
+        }
+
+        // Check if user exists
+        const [existingUsers] = await pool.execute('SELECT id FROM users WHERE email = ?', [email]);
+        if (existingUsers.length > 0) {
+            return res.status(400).json({ error: 'User already exists with this email' });
+        }
+
+        // Hash password
+        const hashedPassword = await bcrypt.hash(password, 12);
+
+        // Create user
+        const [result] = await pool.execute(
+            'INSERT INTO users (first_name, last_name, email, password, country, user_type) VALUES (?, ?, ?, ?, ?, ?)',
+            [firstName, lastName, email, hashedPassword, country, userType]
+        );
+
+        // Create user settings
+        await pool.execute('INSERT INTO user_settings (user_id) VALUES (?)', [result.insertId]);
+
+        // Generate token
+        const token = jwt.sign(
+            { userId: result.insertId },
+            process.env.JWT_SECRET || 'your-secret-key',
+            { expiresIn: '24h' }
+        );
+
+        res.status(201).json({
+            message: 'User created successfully',
+            token,
+            user: {
+                id: result.insertId,
+                firstName,
+                lastName,
+                email,
+                country,
+                userType,
+                avatar: '👤'
+            }
+        });
+    } catch (error) {
+        console.error('Registration error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
 });
+
+app.post('/api/auth/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        // Input validation
+        if (!email || !password) {
+            return res.status(400).json({ error: 'Email and password are required' });
+        }
+
+        // Find user with all necessary fields
+        const [users] = await pool.execute(
+            `SELECT id, first_name, last_name, email, password, user_type, country, avatar, 
+                    join_date, last_login 
+             FROM users WHERE email = ? AND is_active = TRUE`,
+            [email]
+        );
+
+        if (users.length === 0) {
+            return res.status(400).json({ error: 'Invalid email or password' });
+        }
+
+        const user = users[0];
+
+        // Check password
+        const isValidPassword = await bcrypt.compare(password, user.password);
+        if (!isValidPassword) {
+            return res.status(400).json({ error: 'Invalid email or password' });
+        }
+
+        // Update last login
+        await pool.execute(
+            'UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?',
+            [user.id]
+        );
+
+        // Generate token
+        const token = jwt.sign(
+            { userId: user.id },
+            process.env.JWT_SECRET || 'your-secret-key',
+            { expiresIn: '24h' }
+        );
+
+        // Prepare user data for response (exclude password)
+        const userResponse = {
+            id: user.id,
+            firstName: user.first_name,
+            lastName: user.last_name,
+            email: user.email,
+            country: user.country,
+            userType: user.user_type,
+            avatar: user.avatar,
+            joinDate: user.join_date,
+            lastLogin: user.last_login
+        };
+
+        res.json({
+            message: 'Login successful',
+            token,
+            user: userResponse
+        });
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Get current user profile
+app.get('/api/auth/me', authenticateToken, async (req, res) => {
+    try {
+        res.json({ user: req.user });
+    } catch (error) {
+        console.error('Get user error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Admin Routes
+app.get('/api/admin/stats', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const [userStats] = await pool.execute(`
+            SELECT 
+                COUNT(*) as total_users,
+                SUM(user_type = 'student') as total_students,
+                SUM(user_type = 'instructor') as total_instructors,
+                SUM(user_type = 'admin') as total_admins,
+                COUNT(DISTINCT country) as countries_represented,
+                DATE(join_date) as join_date,
+                COUNT(*) as daily_signups
+            FROM users
+            WHERE join_date >= DATE_SUB(CURRENT_DATE, INTERVAL 7 DAY)
+            GROUP BY DATE(join_date)
+            ORDER BY join_date DESC
+        `);
+
+        const [courseStats] = await pool.execute(`
+            SELECT 
+                COUNT(*) as total_courses,
+                SUM(students_count) as total_enrollments,
+                AVG(rating) as average_rating,
+                SUM(is_published) as published_courses,
+                SUM(NOT is_published) as draft_courses
+            FROM courses
+        `);
+
+        const [recentActivity] = await pool.execute(`
+            (SELECT 'user_registered' as type, first_name, last_name, email, join_date as timestamp
+             FROM users 
+             ORDER BY join_date DESC 
+             LIMIT 5)
+            UNION
+            (SELECT 'course_enrolled' as type, 
+                    (SELECT title FROM courses WHERE id = up.course_id) as description,
+                    up.last_accessed as timestamp
+             FROM user_progress up
+             ORDER BY up.last_accessed DESC 
+             LIMIT 5)
+            ORDER BY timestamp DESC 
+            LIMIT 5
+        `);
+
+        res.json({
+            userStats: userStats[0] || {},
+            courseStats: courseStats[0] || {},
+            recentActivity,
+            dailySignups: userStats
+        });
+    } catch (error) {
+        console.error('Admin stats error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { page = 1, limit = 10, search = '' } = req.query;
+        const offset = (page - 1) * limit;
+
+        let query = `
+            SELECT 
+                u.id, u.first_name, u.last_name, u.email, u.country, 
+                u.user_type, u.join_date, u.last_login, u.avatar,
+                COUNT(DISTINCT up.course_id) as courses_enrolled,
+                SUM(up.completed) as courses_completed,
+                COUNT(DISTINCT ua.id) as quizzes_taken
+            FROM users u
+            LEFT JOIN user_progress up ON u.id = up.user_id
+            LEFT JOIN user_quiz_attempts ua ON u.id = ua.user_id
+        `;
+
+        const countQuery = `SELECT COUNT(*) as total FROM users u`;
+
+        let whereClause = '';
+        const params = [];
+
+        if (search) {
+            whereClause = ` WHERE (u.first_name LIKE ? OR u.last_name LIKE ? OR u.email LIKE ?)`;
+            params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+        }
+
+        // Get total count
+        const [countResult] = await pool.execute(countQuery + whereClause, params);
+        const total = countResult[0].total;
+
+        // Get users with pagination
+        query += whereClause + `
+            GROUP BY u.id
+            ORDER BY u.join_date DESC
+            LIMIT ? OFFSET ?
+        `;
+
+        params.push(parseInt(limit), offset);
+
+        const [users] = await pool.execute(query, params);
+
+        res.json({
+            users,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total,
+                pages: Math.ceil(total / limit)
+            }
+        });
+    } catch (error) {
+        console.error('Admin users error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Update user (admin only)
+app.put('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const userId = req.params.id;
+        const { user_type, is_active } = req.body;
+
+        await pool.execute(
+            'UPDATE users SET user_type = ?, is_active = ? WHERE id = ?',
+            [user_type, is_active, userId]
+        );
+
+        res.json({ message: 'User updated successfully' });
+    } catch (error) {
+        console.error('Update user error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Instructor Routes
+app.get('/api/instructor/courses', authenticateToken, requireInstructor, async (req, res) => {
+    try {
+        const instructorId = req.user.id;
+
+        const [courses] = await pool.execute(`
+            SELECT 
+                c.*,
+                COUNT(up.user_id) as enrolled_students,
+                AVG(up.progress_percent) as average_progress,
+                SUM(up.completed) as completed_students
+            FROM courses c
+            LEFT JOIN user_progress up ON c.id = up.course_id
+            WHERE c.instructor_id = ?
+            GROUP BY c.id
+            ORDER BY c.created_at DESC
+        `, [instructorId]);
+
+        res.json(courses);
+    } catch (error) {
+        console.error('Instructor courses error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Check admin status
+app.get('/api/admin/check', authenticateToken, (req, res) => {
+    res.json({ 
+        isAdmin: req.user.user_type === 'admin',
+        isInstructor: ['admin', 'instructor'].includes(req.user.user_type)
+    });
+});
+
+
+// ... existing imports and setup ...
+
+// Auth Routes (already implemented above)
+
+// Admin Routes
+app.get('/api/admin/stats', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const [userStats] = await pool.execute(`
+            SELECT 
+                COUNT(*) as total_users,
+                SUM(user_type = 'student') as total_students,
+                SUM(user_type = 'instructor') as total_instructors,
+                SUM(user_type = 'admin') as total_admins,
+                COUNT(DISTINCT country) as countries_represented
+            FROM users
+            WHERE is_active = TRUE
+        `);
+
+        const [courseStats] = await pool.execute(`
+            SELECT 
+                COUNT(*) as total_courses,
+                SUM(students_count) as total_enrollments,
+                AVG(rating) as average_rating,
+                SUM(is_published) as published_courses,
+                SUM(NOT is_published) as draft_courses
+            FROM courses
+        `);
+
+        const [recentUsers] = await pool.execute(`
+            SELECT id, first_name, last_name, email, user_type, country, avatar, join_date
+            FROM users 
+            ORDER BY join_date DESC 
+            LIMIT 5
+        `);
+
+        res.json({
+            userStats: userStats[0],
+            courseStats: courseStats[0],
+            recentUsers
+        });
+    } catch (error) {
+        console.error('Admin stats error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { page = 1, limit = 10, search = '' } = req.query;
+        const offset = (page - 1) * limit;
+
+        let query = `
+            SELECT 
+                u.id, u.first_name, u.last_name, u.email, u.country, 
+                u.user_type, u.join_date, u.last_login, u.avatar, u.is_active,
+                COUNT(DISTINCT up.course_id) as courses_enrolled,
+                SUM(up.completed) as courses_completed
+            FROM users u
+            LEFT JOIN user_progress up ON u.id = up.user_id
+        `;
+
+        const countQuery = `SELECT COUNT(*) as total FROM users u WHERE u.is_active = TRUE`;
+        let whereClause = ' WHERE u.is_active = TRUE';
+        const params = [];
+
+        if (search) {
+            whereClause += ` AND (u.first_name LIKE ? OR u.last_name LIKE ? OR u.email LIKE ?)`;
+            params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+        }
+
+        // Get total count
+        const [countResult] = await pool.execute(countQuery + (search ? whereClause.replace('WHERE u.is_active = TRUE AND', 'WHERE') : ''), params);
+        const total = countResult[0].total;
+
+        // Get users with pagination
+        query += whereClause + `
+            GROUP BY u.id
+            ORDER BY u.join_date DESC
+            LIMIT ? OFFSET ?
+        `;
+
+        params.push(parseInt(limit), offset);
+
+        const [users] = await pool.execute(query, params);
+
+        res.json({
+            users,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total,
+                pages: Math.ceil(total / limit)
+            }
+        });
+    } catch (error) {
+        console.error('Admin users error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.put('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const userId = req.params.id;
+        const { user_type, is_active } = req.body;
+
+        await pool.execute(
+            'UPDATE users SET user_type = ?, is_active = ? WHERE id = ?',
+            [user_type, is_active, userId]
+        );
+
+        res.json({ message: 'User updated successfully' });
+    } catch (error) {
+        console.error('Update user error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.get('/api/admin/courses', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const [courses] = await pool.execute(`
+            SELECT 
+                c.*, 
+                u.first_name, u.last_name,
+                COUNT(up.user_id) as enrolled_students,
+                AVG(up.progress_percent) as avg_progress
+            FROM courses c
+            LEFT JOIN users u ON c.instructor_id = u.id
+            LEFT JOIN user_progress up ON c.id = up.course_id
+            GROUP BY c.id
+            ORDER BY c.created_at DESC
+        `);
+
+        res.json(courses);
+    } catch (error) {
+        console.error('Admin courses error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/api/admin/courses', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { title, description, duration, level, category, instructor_id } = req.body;
+        
+        const [result] = await pool.execute(
+            `INSERT INTO courses (title, description, duration, level, category, instructor_id, image) 
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [title, description, duration, level, category, instructor_id, '📚']
+        );
+
+        res.status(201).json({
+            message: 'Course created successfully',
+            courseId: result.insertId
+        });
+    } catch (error) {
+        console.error('Create course error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.put('/api/admin/courses/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const courseId = req.params.id;
+        const { title, description, duration, level, category, is_published } = req.body;
+
+        await pool.execute(
+            `UPDATE courses SET title = ?, description = ?, duration = ?, level = ?, category = ?, is_published = ? 
+             WHERE id = ?`,
+            [title, description, duration, level, category, is_published, courseId]
+        );
+
+        res.json({ message: 'Course updated successfully' });
+    } catch (error) {
+        console.error('Update course error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.delete('/api/admin/courses/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const courseId = req.params.id;
+        await pool.execute('DELETE FROM courses WHERE id = ?', [courseId]);
+        res.json({ message: 'Course deleted successfully' });
+    } catch (error) {
+        console.error('Delete course error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/api/admin/courses/:courseId/modules', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { title, content, duration, order_index } = req.body;
+        const courseId = req.params.courseId;
+
+        const [result] = await pool.execute(
+            `INSERT INTO course_modules (course_id, title, content, duration, order_index) 
+             VALUES (?, ?, ?, ?, ?)`,
+            [courseId, title, content, duration, order_index]
+        );
+
+        res.status(201).json({
+            message: 'Module created successfully',
+            moduleId: result.insertId
+        });
+    } catch (error) {
+        console.error('Create module error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/api/admin/courses/:courseId/quiz', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { title, description, time_limit, passing_score, questions } = req.body;
+        const courseId = req.params.courseId;
+
+        const [quizResult] = await pool.execute(
+            `INSERT INTO quizzes (course_id, title, description, time_limit, passing_score) 
+             VALUES (?, ?, ?, ?, ?)`,
+            [courseId, title, description, time_limit, passing_score]
+        );
+
+        const quizId = quizResult.insertId;
+
+        // Insert questions
+        for (const question of questions) {
+            await pool.execute(
+                `INSERT INTO quiz_questions (quiz_id, question, option_a, option_b, option_c, option_d, correct_answer) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                [quizId, question.question, question.option_a, question.option_b, question.option_c, question.option_d, question.correct_answer]
+            );
+        }
+
+        res.status(201).json({
+            message: 'Quiz created successfully',
+            quizId
+        });
+    } catch (error) {
+        console.error('Create quiz error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Instructor Routes
+app.get('/api/instructor/courses', authenticateToken, requireInstructor, async (req, res) => {
+    try {
+        const instructorId = req.user.id;
+
+        const [courses] = await pool.execute(`
+            SELECT 
+                c.*,
+                COUNT(up.user_id) as enrolled_students,
+                AVG(up.progress_percent) as average_progress,
+                SUM(up.completed) as completed_students
+            FROM courses c
+            LEFT JOIN user_progress up ON c.id = up.course_id
+            WHERE c.instructor_id = ?
+            GROUP BY c.id
+            ORDER BY c.created_at DESC
+        `, [instructorId]);
+
+        res.json(courses);
+    } catch (error) {
+        console.error('Instructor courses error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// User Dashboard Route
+app.get('/api/dashboard', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        // Get user info
+        const [users] = await pool.execute(
+            'SELECT first_name, last_name, email, country, user_type, avatar, join_date FROM users WHERE id = ?',
+            [userId]
+        );
+
+        // Get user progress stats
+        const [progressStats] = await pool.execute(`
+            SELECT 
+                COUNT(DISTINCT course_id) as courses_enrolled,
+                SUM(completed) as courses_completed,
+                SUM(time_spent) as total_time_spent,
+                AVG(progress_percent) as average_progress
+            FROM user_progress 
+            WHERE user_id = ?
+        `, [userId]);
+
+        // Get recent courses
+        const [recentCourses] = await pool.execute(`
+            SELECT c.id, c.title, c.image, up.progress_percent, up.last_accessed
+            FROM user_progress up
+            JOIN courses c ON up.course_id = c.id
+            WHERE up.user_id = ?
+            ORDER BY up.last_accessed DESC
+            LIMIT 3
+        `, [userId]);
+
+        // Get recent activity
+        const [recentActivity] = await pool.execute(`
+            (SELECT 'quiz_completed' as type, ua.score, ua.completed_at as timestamp, c.title
+             FROM user_quiz_attempts ua
+             JOIN quizzes q ON ua.quiz_id = q.id
+             JOIN courses c ON q.course_id = c.id
+             WHERE ua.user_id = ?
+             ORDER BY ua.completed_at DESC
+             LIMIT 3)
+            UNION
+            (SELECT 'module_completed' as type, up.progress_percent as score, up.updated_at as timestamp, c.title
+             FROM user_progress up
+             JOIN courses c ON up.course_id = c.id
+             WHERE up.user_id = ? AND up.completed = TRUE
+             ORDER BY up.updated_at DESC
+             LIMIT 3)
+            ORDER BY timestamp DESC
+            LIMIT 5
+        `, [userId, userId]);
+
+        res.json({
+            user: users[0],
+            stats: progressStats[0],
+            recentCourses,
+            recentActivity
+        });
+    } catch (error) {
+        console.error('Dashboard error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Check admin status
+app.get('/api/admin/check', authenticateToken, (req, res) => {
+    res.json({ 
+        isAdmin: req.user.user_type === 'admin',
+        isInstructor: ['admin', 'instructor'].includes(req.user.user_type),
+        user: req.user
+    });
+});
+
+// ... rest of your existing routes (courses, quizzes, case studies, tools, etc.)
+
+
+app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`📧 Demo Accounts:`);
+    console.log(`   Admin: admin@ecolearn.org / admin123`);
+    console.log(`   Student: student@ecolearn.org / demo123`);
+    console.log(`   Instructor: instructor@ecolearn.org / demo123`);
+});
+
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`📧 Demo Accounts:`);
+    console.log(`   Admin: admin@ecolearn.org / admin123`);
+    console.log(`   Student: student@ecolearn.org / demo123`);
+    console.log(`   Instructor: instructor@ecolearn.org / demo123`);
 });
