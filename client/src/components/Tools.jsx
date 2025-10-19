@@ -1,5 +1,6 @@
 // client/src/components/Tools.js
 import React from 'react';
+import './Tools.css';
 
 const Tools = () => {
   return (

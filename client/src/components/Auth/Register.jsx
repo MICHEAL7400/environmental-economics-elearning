@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { useAuth } from '../../context/AuthContext';
 import './Auth.css';
 
 const Register = () => {
@@ -21,36 +21,34 @@ const Register = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
 
-  const countries = [
-    'Select Country', 'Nigeria', 'Kenya', 'South Africa', 'Ghana', 'Ethiopia',
-    'Tanzania', 'Uganda', 'Rwanda', 'Zambia', 'Zimbabwe', 'Botswana',
-    'Senegal', 'Ivory Coast', 'Cameroon', 'Other'
-  ];
+    const countries = [
+        'Kenya', 'Nigeria', 'Ghana', 'South Africa', 'Ethiopia', 'Tanzania',
+        'Uganda', 'Rwanda', 'Zambia', 'Zimbabwe', 'Botswana', 'Senegal',
+        'Other'
+    ];
 
-  const userTypes = [
-    { value: 'student', label: '👨‍🎓 Student/Learner', description: 'I want to learn about environmental economics' },
-    { value: 'instructor', label: '👨‍🏫 Educator/Instructor', description: 'I want to teach or create content' },
-    { value: 'policymaker', label: '🏛️ Policy Maker', description: 'I work in government or policy' },
-    { value: 'professional', label: '💼 Environmental Professional', description: 'I work in environmental sector' },
-    { value: 'researcher', label: '🔬 Researcher/Academic', description: 'I conduct research or studies' },
-    { value: 'other', label: '🌍 Other', description: 'Other interests in environmental economics' }
-  ];
+    const calculatePasswordStrength = (password) => {
+        let strength = 0;
+        if (password.length >= 8) strength += 25;
+        if (/[A-Z]/.test(password)) strength += 25;
+        if (/[0-9]/.test(password)) strength += 25;
+        if (/[^A-Za-z0-9]/.test(password)) strength += 25;
+        return strength;
+    };
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
-    
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
-    }
-  };
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData({
+            ...formData,
+            [name]: value
+        });
+
+        if (name === 'password') {
+            setPasswordStrength(calculatePasswordStrength(value));
+        }
+
+        if (error) setError('');
+    };
 
   const validateForm = () => {
     const newErrors = {};
@@ -81,25 +79,24 @@ const Register = () => {
       newErrors.confirmPassword = 'Passwords do not match';
     }
 
-    if (!formData.country || formData.country === 'Select Country') {
-      newErrors.country = 'Please select your country';
-    }
+        if (passwordStrength < 75) {
+            return 'Please choose a stronger password';
+        }
 
-    if (!formData.agreeToTerms) {
-      newErrors.agreeToTerms = 'You must agree to the terms and conditions';
-    }
+        return null;
+    };
 
-    return newErrors;
-  };
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        setError('');
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const newErrors = validateForm();
-    
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
+        const validationError = validateForm();
+        if (validationError) {
+            setError(validationError);
+            setLoading(false);
+            return;
+        }
 
     setIsLoading(true);
     setErrors({});
@@ -200,18 +197,25 @@ const Register = () => {
     }));
   };
 
-  return (
-    <div className="auth-container">
-      <div className="auth-card">
-        {/* Header */}
-        <div className="auth-header">
-          <Link to="/" className="auth-logo">
-            <span className="logo-icon">🌍</span>
-            <span className="logo-text">EcoLearn</span>
-          </Link>
-          <h1>Join EcoLearn</h1>
-          <p>Start your journey in environmental economics today</p>
-        </div>
+    return (
+        <div className="auth-container">
+            <div className="auth-background">
+                <div className="auth-shapes">
+                    <div className="shape shape-1"></div>
+                    <div className="shape shape-2"></div>
+                    <div className="shape shape-3"></div>
+                </div>
+            </div>
+
+            <div className="auth-card">
+                <div className="auth-header">
+                    <Link to="/" className="auth-logo">
+                        <span className="logo-icon">🌍</span>
+                        <span className="logo-text">EcoLearn</span>
+                    </Link>
+                    <h1>Join EcoLearn Today! 🌱</h1>
+                    <p>Start your journey in environmental economics</p>
+                </div>
 
         {/* Registration Form */}
         <form onSubmit={handleSubmit} className="auth-form">
@@ -416,21 +420,21 @@ const Register = () => {
             {errors.agreeToTerms && <span className="error-text">{errors.agreeToTerms}</span>}
           </div>
 
-          <button 
-            type="submit" 
-            className="auth-button primary"
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <>
-                <div className="spinner"></div>
-                Creating Account...
-              </>
-            ) : (
-              'Create Account →'
-            )}
-          </button>
-        </form>
+                    <button 
+                        type="submit" 
+                        className="auth-button primary"
+                        disabled={loading}
+                    >
+                        {loading ? (
+                            <>
+                                <div className="button-spinner"></div>
+                                Creating Account...
+                            </>
+                        ) : (
+                            'Create Account'
+                        )}
+                    </button>
+                </form>
 
         {/* Social Sign Up */}
         <div className="social-login">
@@ -460,68 +464,58 @@ const Register = () => {
         </div>
       </div>
 
-      {/* Benefits Side Panel */}
-      <div className="auth-welcome">
-        <div className="welcome-content">
-          <h2>Why Join EcoLearn?</h2>
-          <p>Be part of Africa's premier environmental economics learning community</p>
-          
-          <div className="welcome-features">
-            <div className="feature-item">
-              <span className="feature-icon">🎓</span>
-              <div>
-                <h4>Expert-Led Courses</h4>
-                <p>Learn from leading African environmental economists</p>
-              </div>
-            </div>
-            <div className="feature-item">
-              <span className="feature-icon">🌍</span>
-              <div>
-                <h4>African Context</h4>
-                <p>Content tailored for African challenges and opportunities</p>
-              </div>
-            </div>
-            <div className="feature-item">
-              <span className="feature-icon">🛠️</span>
-              <div>
-                <h4>Practical Tools</h4>
-                <p>Access calculators, simulators, and analysis tools</p>
-              </div>
-            </div>
-            <div className="feature-item">
-              <span className="feature-icon">👥</span>
-              <div>
-                <h4>Network</h4>
-                <p>Connect with professionals across Africa</p>
-              </div>
-            </div>
-            <div className="feature-item">
-              <span className="feature-icon">📈</span>
-              <div>
-                <h4>Career Growth</h4>
-                <p>Advance your career in green economy sectors</p>
-              </div>
-            </div>
-            <div className="feature-item">
-              <span className="feature-icon">💚</span>
-              <div>
-                <h4>Make Impact</h4>
-                <p>Contribute to sustainable development in Africa</p>
-              </div>
-            </div>
-          </div>
+            <div className="auth-features">
+                <div className="features-content">
+                    <h2>Why Join EcoLearn?</h2>
+                    <div className="feature-list">
+                        <div className="feature-item">
+                            <span className="feature-icon">🎓</span>
+                            <div>
+                                <h4>Expert-Led Courses</h4>
+                                <p>Learn from leading environmental economics experts</p>
+                            </div>
+                        </div>
+                        <div className="feature-item">
+                            <span className="feature-icon">🛠️</span>
+                            <div>
+                                <h4>Practical Tools</h4>
+                                <p>Access calculators and analysis tools for real-world applications</p>
+                            </div>
+                        </div>
+                        <div className="feature-item">
+                            <span className="feature-icon">📖</span>
+                            <div>
+                                <h4>African Case Studies</h4>
+                                <p>Learn through context-specific African examples</p>
+                            </div>
+                        </div>
+                        <div className="feature-item">
+                            <span className="feature-icon">🤝</span>
+                            <div>
+                                <h4>Global Community</h4>
+                                <p>Connect with environmental professionals across Africa</p>
+                            </div>
+                        </div>
+                    </div>
 
-          <div className="testimonial">
-            <p>"EcoLearn transformed how I approach environmental policy in my work. The African-focused content is invaluable!"</p>
-            <div className="testimonial-author">
-              <strong>Dr. Sarah K.</strong>
-              <span>Policy Advisor, Nairobi</span>
+                    <div className="stats-preview">
+                        <div className="stat">
+                            <h3>15,000+</h3>
+                            <p>Active Learners</p>
+                        </div>
+                        <div className="stat">
+                            <h3>50+</h3>
+                            <p>Expert Courses</p>
+                        </div>
+                        <div className="stat">
+                            <h3>25+</h3>
+                            <p>African Countries</p>
+                        </div>
+                    </div>
+                </div>
             </div>
-          </div>
         </div>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default Register;
