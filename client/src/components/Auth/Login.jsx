@@ -20,7 +20,6 @@ const Login = () => {
       ...prev,
       [name]: value
     }));
-    // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -31,7 +30,6 @@ const Login = () => {
 
   const validateForm = () => {
     const newErrors = {};
-
     if (!formData.email) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
@@ -50,43 +48,62 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = validateForm();
-    
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
 
     setIsLoading(true);
-    
+
     try {
-      // Simulate API call - replace with your actual authentication endpoint
-      const response = await axios.post('http://localhost:5000/api/auth/login', formData);
-      
-      // Store token and user data
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      
-      // Redirect to dashboard or previous page
-      navigate('/dashboard');
-      
+      const response = await axios.post('http://localhost:5000/api/auth/login', formData, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const { token, user } = response.data;
+
+      if (rememberMe) {
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(user));
+      } else {
+        sessionStorage.setItem('token', token);
+        sessionStorage.setItem('user', JSON.stringify(user));
+      }
+
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+      // Redirect to home page
+      navigate('/', { replace: true });
+
     } catch (error) {
       console.error('Login error:', error);
-      setErrors({
-        submit: error.response?.data?.message || 'Login failed. Please try again.'
-      });
+
+      if (error.response) {
+        const errorMessage = error.response.data?.message || error.response.data?.error || 'Login failed. Please try again.';
+        setErrors({ submit: errorMessage });
+      } else if (error.request) {
+        setErrors({ submit: 'Unable to connect to server. Please check your connection and try again.' });
+      } else {
+        setErrors({ submit: 'An unexpected error occurred. Please try again.' });
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleDemoLogin = (role) => {
+  const handleDemoLogin = async (role) => {
     const demoCredentials = {
       student: { email: 'student@demo.com', password: 'demo123' },
       instructor: { email: 'instructor@demo.com', password: 'demo123' },
       policymaker: { email: 'policymaker@demo.com', password: 'demo123' }
     };
-    
+
     setFormData(demoCredentials[role]);
+
+    // Submit demo credentials using the same handleSubmit function
+    setTimeout(() => handleSubmit(new Event('submit', { cancelable: true })), 100);
   };
 
   return (
@@ -110,6 +127,7 @@ const Login = () => {
               type="button"
               className="demo-btn student"
               onClick={() => handleDemoLogin('student')}
+              disabled={isLoading}
             >
               👨‍🎓 Student Demo
             </button>
@@ -117,6 +135,7 @@ const Login = () => {
               type="button"
               className="demo-btn instructor"
               onClick={() => handleDemoLogin('instructor')}
+              disabled={isLoading}
             >
               👨‍🏫 Instructor Demo
             </button>
@@ -124,6 +143,7 @@ const Login = () => {
               type="button"
               className="demo-btn policymaker"
               onClick={() => handleDemoLogin('policymaker')}
+              disabled={isLoading}
             >
               🏛️ Policy Maker Demo
             </button>
@@ -152,6 +172,7 @@ const Login = () => {
               onChange={handleChange}
               className={errors.email ? 'error' : ''}
               placeholder="Enter your email"
+              disabled={isLoading}
             />
             {errors.email && <span className="error-text">{errors.email}</span>}
           </div>
@@ -167,11 +188,13 @@ const Login = () => {
                 onChange={handleChange}
                 className={errors.password ? 'error' : ''}
                 placeholder="Enter your password"
+                disabled={isLoading}
               />
               <button
                 type="button"
                 className="password-toggle"
                 onClick={() => setShowPassword(!showPassword)}
+                disabled={isLoading}
               >
                 {showPassword ? '🙈' : '👁️'}
               </button>
@@ -185,6 +208,7 @@ const Login = () => {
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
+                disabled={isLoading}
               />
               <span className="checkmark"></span>
               Remember me
@@ -216,15 +240,15 @@ const Login = () => {
             <span>Or continue with</span>
           </div>
           <div className="social-buttons">
-            <button type="button" className="social-btn google">
+            <button type="button" className="social-btn google" disabled={isLoading}>
               <span className="social-icon">🔍</span>
               Google
             </button>
-            <button type="button" className="social-btn github">
+            <button type="button" className="social-btn github" disabled={isLoading}>
               <span className="social-icon">💻</span>
               GitHub
             </button>
-            <button type="button" className="social-btn linkedin">
+            <button type="button" className="social-btn linkedin" disabled={isLoading}>
               <span className="social-icon">💼</span>
               LinkedIn
             </button>

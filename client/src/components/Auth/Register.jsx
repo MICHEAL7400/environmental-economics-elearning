@@ -10,7 +10,7 @@ const Register = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    userType: 'student',
+    role: 'student',
     country: '',
     organization: '',
     agreeToTerms: false
@@ -71,10 +71,8 @@ const Register = () => {
 
     if (!formData.password) {
       newErrors.password = 'Password is required';
-    } else if (formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters';
-    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
-      newErrors.password = 'Password must contain uppercase, lowercase, and numbers';
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
     }
 
     if (!formData.confirmPassword) {
@@ -104,34 +102,101 @@ const Register = () => {
     }
 
     setIsLoading(true);
+    setErrors({});
     
     try {
-      // Remove confirmPassword before sending
-      const { confirmPassword, agreeToTerms, ...submitData } = formData;
+      // Prepare data for backend - match the expected field names
+      const submitData = {
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        email: formData.email.toLowerCase().trim(),
+        password: formData.password,
+        role: formData.role,
+        country: formData.country || '',
+        organization: formData.organization || ''
+      };
+
+      console.log('Sending registration data:', submitData);
+
+      // First, test if backend is reachable
+      try {
+        await axios.get('http://localhost:5000/api/health');
+        console.log('✅ Backend server is running');
+      } catch (healthError) {
+        throw new Error('Backend server is not running. Please make sure the server is started on port 5000.');
+      }
+
+      const response = await axios.post('http://localhost:5000/api/auth/register', submitData, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        timeout: 15000,
+      });
       
-      const response = await axios.post('http://localhost:5000/api/auth/register', submitData);
+      console.log('✅ Registration successful:', response.data);
       
-      // Store token and user data
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      
-      // Redirect to onboarding or dashboard
-      navigate('/onboarding');
+      // ✅ SUCCESS: Show success message
+      setErrors({ 
+        success: '🎉 Account created successfully! Redirecting to login...' 
+      });
+
+      // Clear form
+      setFormData({
+        firstName: '',
+        lastName: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        role: 'student',
+        country: '',
+        organization: '',
+        agreeToTerms: false
+      });
+
+      // Redirect to login page after 2 seconds
+      setTimeout(() => {
+        navigate('/login', { 
+          replace: true,
+          state: { 
+            successMessage: 'Account created successfully! Please sign in with your new credentials.',
+            prefillEmail: submitData.email 
+          }
+        });
+      }, 2000);
       
     } catch (error) {
-      console.error('Registration error:', error);
-      setErrors({
-        submit: error.response?.data?.message || 'Registration failed. Please try again.'
-      });
+      console.error('❌ Registration error:', error);
+      
+      if (error.message.includes('Backend server is not running')) {
+        setErrors({ 
+          submit: '🚨 ' + error.message 
+        });
+      } else if (error.response) {
+        // Server responded with error status
+        const errorMessage = error.response.data?.message || error.response.data?.error || 'Registration failed. Please try again.';
+        setErrors({ 
+          submit: '❌ ' + errorMessage 
+        });
+      } else if (error.request) {
+        // Request was made but no response received
+        setErrors({ 
+          submit: '🌐 Cannot connect to server. Please make sure the backend is running on http://localhost:5000' 
+        });
+      } else {
+        // Something else happened
+        setErrors({ 
+          submit: '⚠️ An unexpected error occurred. Please try again.' 
+        });
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleUserTypeSelect = (userType) => {
+  const handleUserTypeSelect = (role) => {
     setFormData(prev => ({
       ...prev,
-      userType
+      role
     }));
   };
 
@@ -150,16 +215,24 @@ const Register = () => {
 
         {/* Registration Form */}
         <form onSubmit={handleSubmit} className="auth-form">
+          {/* Success Message */}
+          {errors.success && (
+            <div className="success-message">
+              ✅ {errors.success}
+            </div>
+          )}
+
+          {/* Error Message */}
           {errors.submit && (
             <div className="error-message submit-error">
-              ⚠️ {errors.submit}
+              {errors.submit}
             </div>
           )}
 
           {/* Name Fields */}
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="firstName">First Name</label>
+              <label htmlFor="firstName">First Name *</label>
               <input
                 type="text"
                 id="firstName"
@@ -168,12 +241,13 @@ const Register = () => {
                 onChange={handleChange}
                 className={errors.firstName ? 'error' : ''}
                 placeholder="Enter your first name"
+                disabled={isLoading}
               />
               {errors.firstName && <span className="error-text">{errors.firstName}</span>}
             </div>
 
             <div className="form-group">
-              <label htmlFor="lastName">Last Name</label>
+              <label htmlFor="lastName">Last Name *</label>
               <input
                 type="text"
                 id="lastName"
@@ -182,6 +256,7 @@ const Register = () => {
                 onChange={handleChange}
                 className={errors.lastName ? 'error' : ''}
                 placeholder="Enter your last name"
+                disabled={isLoading}
               />
               {errors.lastName && <span className="error-text">{errors.lastName}</span>}
             </div>
@@ -189,7 +264,7 @@ const Register = () => {
 
           {/* Email */}
           <div className="form-group">
-            <label htmlFor="email">Email Address</label>
+            <label htmlFor="email">Email Address *</label>
             <input
               type="email"
               id="email"
@@ -198,21 +273,22 @@ const Register = () => {
               onChange={handleChange}
               className={errors.email ? 'error' : ''}
               placeholder="Enter your email address"
+              disabled={isLoading}
             />
             {errors.email && <span className="error-text">{errors.email}</span>}
           </div>
 
           {/* User Type Selection */}
           <div className="form-group">
-            <label>I am a...</label>
+            <label>I am a... *</label>
             <div className="user-type-grid">
               {userTypes.map((type) => (
                 <div
                   key={type.value}
                   className={`user-type-card ${
-                    formData.userType === type.value ? 'selected' : ''
-                  }`}
-                  onClick={() => handleUserTypeSelect(type.value)}
+                    formData.role === type.value ? 'selected' : ''
+                  } ${isLoading ? 'disabled' : ''}`}
+                  onClick={() => !isLoading && handleUserTypeSelect(type.value)}
                 >
                   <div className="user-type-header">
                     <span className="user-type-icon">{type.label.split(' ')[0]}</span>
@@ -229,13 +305,14 @@ const Register = () => {
           {/* Location */}
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="country">Country</label>
+              <label htmlFor="country">Country *</label>
               <select
                 id="country"
                 name="country"
                 value={formData.country}
                 onChange={handleChange}
                 className={errors.country ? 'error' : ''}
+                disabled={isLoading}
               >
                 {countries.map(country => (
                   <option key={country} value={country}>
@@ -255,13 +332,14 @@ const Register = () => {
                 value={formData.organization}
                 onChange={handleChange}
                 placeholder="University, Company, etc."
+                disabled={isLoading}
               />
             </div>
           </div>
 
           {/* Password Fields */}
           <div className="form-group">
-            <label htmlFor="password">Password</label>
+            <label htmlFor="password">Password *</label>
             <div className="password-input">
               <input
                 type={showPassword ? "text" : "password"}
@@ -270,27 +348,31 @@ const Register = () => {
                 value={formData.password}
                 onChange={handleChange}
                 className={errors.password ? 'error' : ''}
-                placeholder="Create a strong password"
+                placeholder="Create a password (min. 6 characters)"
+                disabled={isLoading}
               />
               <button
                 type="button"
                 className="password-toggle"
                 onClick={() => setShowPassword(!showPassword)}
+                disabled={isLoading}
               >
                 {showPassword ? '🙈' : '👁️'}
               </button>
             </div>
             {errors.password && <span className="error-text">{errors.password}</span>}
             <div className="password-strength">
-              <div className={`strength-bar ${formData.password.length >= 8 ? 'strong' : 'weak'}`}></div>
+              <div className={`strength-bar ${
+                formData.password.length >= 6 ? 'strong' : 'weak'
+              }`}></div>
               <span className="strength-text">
-                {formData.password.length >= 8 ? 'Strong password' : 'Weak password'}
+                {formData.password.length >= 6 ? 'Password meets requirements' : 'Minimum 6 characters required'}
               </span>
             </div>
           </div>
 
           <div className="form-group">
-            <label htmlFor="confirmPassword">Confirm Password</label>
+            <label htmlFor="confirmPassword">Confirm Password *</label>
             <div className="password-input">
               <input
                 type={showConfirmPassword ? "text" : "password"}
@@ -300,11 +382,13 @@ const Register = () => {
                 onChange={handleChange}
                 className={errors.confirmPassword ? 'error' : ''}
                 placeholder="Confirm your password"
+                disabled={isLoading}
               />
               <button
                 type="button"
                 className="password-toggle"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                disabled={isLoading}
               >
                 {showConfirmPassword ? '🙈' : '👁️'}
               </button>
@@ -320,12 +404,14 @@ const Register = () => {
                 name="agreeToTerms"
                 checked={formData.agreeToTerms}
                 onChange={handleChange}
+                disabled={isLoading}
               />
               <span className="checkmark"></span>
               I agree to the{' '}
               <Link to="/terms" className="inline-link">Terms of Service</Link>
               {' '}and{' '}
               <Link to="/privacy" className="inline-link">Privacy Policy</Link>
+              {' '}*
             </label>
             {errors.agreeToTerms && <span className="error-text">{errors.agreeToTerms}</span>}
           </div>
@@ -352,11 +438,11 @@ const Register = () => {
             <span>Or sign up with</span>
           </div>
           <div className="social-buttons">
-            <button type="button" className="social-btn google">
+            <button type="button" className="social-btn google" disabled={isLoading}>
               <span className="social-icon">🔍</span>
               Google
             </button>
-            <button type="button" className="social-btn github">
+            <button type="button" className="social-btn github" disabled={isLoading}>
               <span className="social-icon">💻</span>
               GitHub
             </button>
