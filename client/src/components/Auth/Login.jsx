@@ -56,6 +56,7 @@ const Login = () => {
     setIsLoading(true);
 
     try {
+      console.log('🚀 Starting login process...');
       const response = await axios.post('http://localhost:5000/api/auth/login', formData, {
         headers: {
           'Content-Type': 'application/json',
@@ -63,22 +64,34 @@ const Login = () => {
       });
 
       const { token, user } = response.data;
+      
+      console.log('✅ Login successful!');
+      console.log('🔍 User data received:', user);
+      console.log('🔍 User first_name:', user.first_name);
+      console.log('🔍 User last_name:', user.last_name);
 
       if (rememberMe) {
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(user));
+        console.log('💾 User saved to localStorage');
       } else {
         sessionStorage.setItem('token', token);
         sessionStorage.setItem('user', JSON.stringify(user));
+        console.log('💾 User saved to sessionStorage');
       }
 
+      // Set authorization header for future requests
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
-      // Redirect to home page
+      // Trigger events to update other components
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('userLogin', { detail: user }));
+
+      console.log('🔄 Redirecting to home page...');
       navigate('/', { replace: true });
 
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('❌ Login error:', error);
 
       if (error.response) {
         const errorMessage = error.response.data?.message || error.response.data?.error || 'Login failed. Please try again.';
@@ -93,19 +106,6 @@ const Login = () => {
     }
   };
 
-  const handleDemoLogin = async (role) => {
-    const demoCredentials = {
-      student: { email: 'student@demo.com', password: 'demo123' },
-      instructor: { email: 'instructor@demo.com', password: 'demo123' },
-      policymaker: { email: 'policymaker@demo.com', password: 'demo123' }
-    };
-
-    setFormData(demoCredentials[role]);
-
-    // Submit demo credentials using the same handleSubmit function
-    setTimeout(() => handleSubmit(new Event('submit', { cancelable: true })), 100);
-  };
-
   return (
     <div className="auth-container">
       <div className="auth-card">
@@ -117,41 +117,6 @@ const Login = () => {
           </Link>
           <h1>Welcome Back</h1>
           <p>Sign in to continue your environmental economics journey</p>
-        </div>
-
-        {/* Demo Login Buttons */}
-        <div className="demo-login-section">
-          <p className="demo-label">Quick Demo Access:</p>
-          <div className="demo-buttons">
-            <button 
-              type="button"
-              className="demo-btn student"
-              onClick={() => handleDemoLogin('student')}
-              disabled={isLoading}
-            >
-              👨‍🎓 Student Demo
-            </button>
-            <button 
-              type="button"
-              className="demo-btn instructor"
-              onClick={() => handleDemoLogin('instructor')}
-              disabled={isLoading}
-            >
-              👨‍🏫 Instructor Demo
-            </button>
-            <button 
-              type="button"
-              className="demo-btn policymaker"
-              onClick={() => handleDemoLogin('policymaker')}
-              disabled={isLoading}
-            >
-              🏛️ Policy Maker Demo
-            </button>
-          </div>
-        </div>
-
-        <div className="divider">
-          <span>Or sign in with email</span>
         </div>
 
         {/* Login Form */}
