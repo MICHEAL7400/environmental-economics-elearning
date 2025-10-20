@@ -738,3 +738,80 @@
     display: none;
   }
 }
+
+
+
+/* Development Helper Styles */
+.dev-helper {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+  text-align: center;
+}
+
+.test-buttons {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+
+.test-credentials-btn {
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.test-credentials-btn.admin {
+  background: #dc3545;
+  color: white;
+}
+
+.test-credentials-btn.admin:hover {
+  background: #c82333;
+}
+
+.test-credentials-btn.user {
+  background: #28a745;
+  color: white;
+}
+
+.test-credentials-btn.user:hover {
+  background: #218838;
+}
+
+.test-info {
+  font-size: 0.75rem;
+  color: #6c757d;
+}
+
+.debug-info {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.debug-info summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #495057;
+}
+
+.debug-info pre {
+  background: white;
+  padding: 1rem;
+  border-radius: 6px;
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: #495057;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}

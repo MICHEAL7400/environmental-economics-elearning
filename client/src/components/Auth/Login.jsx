@@ -45,6 +45,32 @@ const Login = () => {
     return newErrors;
   };
 
+  // Normalize user data to match your database schema
+  const normalizeUserData = (userData) => {
+    if (!userData) return null;
+    
+    return {
+      ...userData,
+      // Map database fields to frontend expected fields
+      firstName: userData.first_name || userData.firstName,
+      lastName: userData.last_name || userData.lastName,
+      userType: userData.user_type || userData.userType || 'student',
+      avatar: userData.avatar || '👤',
+      // Include all database fields for compatibility
+      id: userData.id,
+      email: userData.email,
+      phone: userData.phone,
+      country: userData.country,
+      city: userData.city,
+      organization: userData.organization,
+      role: userData.role,
+      bio: userData.bio,
+      join_date: userData.join_date,
+      last_login: userData.last_login,
+      is_active: userData.is_active
+    };
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = validateForm();
@@ -57,6 +83,8 @@ const Login = () => {
 
     try {
       console.log('🚀 Starting login process...');
+      console.log('📧 Login attempt for:', formData.email);
+      
       const response = await axios.post('http://localhost:5000/api/auth/login', formData, {
         headers: {
           'Content-Type': 'application/json',
@@ -66,17 +94,22 @@ const Login = () => {
       const { token, user } = response.data;
       
       console.log('✅ Login successful!');
-      console.log('🔍 User data received:', user);
+      console.log('🔍 Raw user data from API:', user);
       console.log('🔍 User first_name:', user.first_name);
       console.log('🔍 User last_name:', user.last_name);
+      console.log('🔍 User user_type:', user.user_type);
+
+      // Normalize user data to match database schema
+      const normalizedUser = normalizeUserData(user);
+      console.log('🔄 Normalized user data:', normalizedUser);
 
       if (rememberMe) {
         localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(user));
+        localStorage.setItem('user', JSON.stringify(normalizedUser));
         console.log('💾 User saved to localStorage');
       } else {
         sessionStorage.setItem('token', token);
-        sessionStorage.setItem('user', JSON.stringify(user));
+        sessionStorage.setItem('user', JSON.stringify(normalizedUser));
         console.log('💾 User saved to sessionStorage');
       }
 
@@ -85,10 +118,28 @@ const Login = () => {
 
       // Trigger events to update other components
       window.dispatchEvent(new Event('storage'));
-      window.dispatchEvent(new CustomEvent('userLogin', { detail: user }));
+      
+      // Dispatch custom event with normalized user data
+      const loginEvent = new CustomEvent('userLogin', { 
+        detail: normalizedUser 
+      });
+      window.dispatchEvent(loginEvent);
 
-      console.log('🔄 Redirecting to home page...');
-      navigate('/', { replace: true });
+      // 🔥 REDIRECT BASED ON USER TYPE
+      console.log('🔄 Checking user type for redirect...');
+      console.log('👤 User type from API:', user.user_type);
+      console.log('👤 Normalized user type:', normalizedUser.userType);
+      
+      // Check both possible user type fields
+      const isAdmin = user.user_type === 'admin' || normalizedUser.userType === 'admin';
+      
+      if (isAdmin) {
+        console.log('🎯 Redirecting ADMIN to admin dashboard');
+        navigate('/admin', { replace: true });
+      } else {
+        console.log('🎯 Redirecting regular user to home');
+        navigate('/', { replace: true });
+      }
 
     } catch (error) {
       console.error('❌ Login error:', error);
@@ -96,14 +147,34 @@ const Login = () => {
       if (error.response) {
         const errorMessage = error.response.data?.message || error.response.data?.error || 'Login failed. Please try again.';
         setErrors({ submit: errorMessage });
+        console.log('🔍 Error response data:', error.response.data);
+        console.log('🔍 Error response status:', error.response.status);
       } else if (error.request) {
         setErrors({ submit: 'Unable to connect to server. Please check your connection and try again.' });
+        console.log('🔍 No response received:', error.request);
       } else {
         setErrors({ submit: 'An unexpected error occurred. Please try again.' });
+        console.log('🔍 Error message:', error.message);
       }
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Development helper - fill test credentials
+  const fillTestCredentials = (type = 'admin') => {
+    if (type === 'admin') {
+      setFormData({
+        email: 'admin@ecolearn.org',
+        password: 'admin123'
+      });
+    } else {
+      setFormData({
+        email: 'biamungunestory@gmail.com',
+        password: 'admin123'
+      });
+    }
+    console.log('🧪 Test credentials filled for:', type);
   };
 
   return (
@@ -117,6 +188,34 @@ const Login = () => {
           </Link>
           <h1>Welcome Back</h1>
           <p>Sign in to continue your environmental economics journey</p>
+          
+          {/* Development Helper */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="dev-helper">
+              <div className="test-buttons">
+                <button 
+                  type="button" 
+                  className="test-credentials-btn admin"
+                  onClick={() => fillTestCredentials('admin')}
+                >
+                  🧪 Fill Admin Credentials
+                </button>
+                <button 
+                  type="button" 
+                  className="test-credentials-btn user"
+                  onClick={() => fillTestCredentials('user')}
+                >
+                  🧪 Fill User Credentials
+                </button>
+              </div>
+              <div className="test-info">
+                <small>
+                  <strong>Admin:</strong> admin@ecolearn.org | admin123<br />
+                  <strong>User:</strong> biamungunestory@gmail.com | admin123
+                </small>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Login Form */}
@@ -124,6 +223,8 @@ const Login = () => {
           {errors.submit && (
             <div className="error-message submit-error">
               ⚠️ {errors.submit}
+              <br />
+              <small>Check console for detailed error information</small>
             </div>
           )}
 
@@ -138,6 +239,7 @@ const Login = () => {
               className={errors.email ? 'error' : ''}
               placeholder="Enter your email"
               disabled={isLoading}
+              autoComplete="email"
             />
             {errors.email && <span className="error-text">{errors.email}</span>}
           </div>
@@ -154,6 +256,7 @@ const Login = () => {
                 className={errors.password ? 'error' : ''}
                 placeholder="Enter your password"
                 disabled={isLoading}
+                autoComplete="current-password"
               />
               <button
                 type="button"
@@ -198,6 +301,22 @@ const Login = () => {
             )}
           </button>
         </form>
+
+        {/* Debug Info */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="debug-info">
+            <details>
+              <summary>🔧 Debug Information</summary>
+              <pre>
+                Email: {formData.email}<br />
+                Password: {'*'.repeat(formData.password.length)}<br />
+                Loading: {isLoading ? 'Yes' : 'No'}<br />
+                Remember Me: {rememberMe ? 'Yes' : 'No'}<br />
+                Endpoint: http://localhost:5000/api/auth/login
+              </pre>
+            </details>
+          </div>
+        )}
 
         {/* Social Login */}
         <div className="social-login">
