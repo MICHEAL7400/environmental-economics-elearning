@@ -9,6 +9,7 @@ const { testConnection, initDatabase } = require('./config/database');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const courseRoutes = require('./routes/courses');
+const caseStudyRoutes = require('./routes/caseStudies');
 const progressRoutes = require('./routes/progress');
 
 const app = express();
@@ -44,6 +45,7 @@ const initializeApp = async () => {
     app.use('/api/users', userRoutes);
     app.use('/api/courses', courseRoutes);
     app.use('/api/progress', progressRoutes);
+    app.use('/api/case-studies', caseStudyRoutes);
 
     // =========================
     // 💓 Health check route

@@ -1,3 +1,20 @@
+/* ===========================
+   Global Variables (Optional)
+   =========================== */
+:root {
+  --primary-green: #2d5a27;
+  --white: #ffffff;
+  --light-bg: #f9f9f9;
+  --gradient-primary: linear-gradient(135deg, #4caf50, #2e7d32);
+  --border-radius: 12px;
+  --shadow-soft: 0 4px 12px rgba(0,0,0,0.05);
+  --shadow-hover: 0 8px 20px rgba(0,0,0,0.1);
+  --transition: all 0.3s ease-in-out;
+}
+
+/* ===========================
+   Home Page
+   =========================== */
 .home {
   min-height: 100vh;
 }
@@ -14,10 +31,7 @@
 .home .hero::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  top: 0; left: 0; right: 0; bottom: 0;
   background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
 }
 
@@ -114,9 +128,7 @@
 .home .feature-card::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
+  top: 0; left: 0; right: 0;
   height: 4px;
   background: var(--gradient-primary);
 }
@@ -193,9 +205,7 @@
 .home .access-card::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
+  top: 0; left: 0; right: 0;
   height: 4px;
   background: var(--gradient-primary);
 }
@@ -292,24 +302,70 @@
   font-size: 0.9rem;
 }
 
+/* ===========================
+   Header / Avatar Fixes
+   =========================== */
+.header .user-avatar-btn .avatar {
+  font-size: 1.5rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background-color: #e0e0e0;
+  text-align: center;
+}
+
+/* Dropdown Arrow */
+.header .dropdown-arrow {
+  margin-left: 0.5rem;
+  font-size: 0.8rem;
+  transition: transform 0.3s ease;
+}
+
+.header .dropdown-arrow.open {
+  transform: rotate(180deg);
+}
+
+/* Mobile Menu Bars */
+.mobile-menu-btn .menu-bar {
+  display: block;
+  width: 25px;
+  height: 3px;
+  margin: 5px auto;
+  background-color: var(--primary-green);
+  transition: var(--transition);
+}
+
+/* Responsive Fixes */
 @media (max-width: 768px) {
   .home .hero h1 {
     font-size: 2.5rem;
   }
-  
+
   .home .hero {
     padding: 4rem 0;
   }
-  
+
   .home .feature-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .home .hero-stats {
     gap: 2rem;
   }
-  
+
   .home .stat h3 {
     font-size: 2rem;
+  }
+
+  /* Mobile avatar size */
+  .header .user-avatar-btn .avatar {
+    width: 1.8rem;
+    height: 1.8rem;
+    font-size: 1.2rem;
   }
 }

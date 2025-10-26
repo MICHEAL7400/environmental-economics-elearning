@@ -1,31 +1,65 @@
-// client/src/components/Admin/AdminRoute.jsx
-import React from 'react';
-import { Navigate } from 'react-router-dom';
+// client/src/components/Admin/AdminRoute.jsx - FIXED
+import { useEffect, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const AdminRoute = ({ children }) => {
-  // Check for user in localStorage first, then sessionStorage
-  const userString = localStorage.getItem('user') || sessionStorage.getItem('user');
-  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-  
-  let user = {};
-  try {
-    user = userString ? JSON.parse(userString) : {};
-  } catch (error) {
-    console.error('Error parsing user data:', error);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
+
+  useEffect(() => {
+    const checkAdminAuth = () => {
+      console.log('🛡️ AdminRoute checking authentication...');
+      console.log('📍 Current path:', location.pathname);
+      
+      const adminToken = sessionStorage.getItem('adminToken');
+      const adminUser = sessionStorage.getItem('adminUser');
+      
+      console.log('📋 AdminRoute auth check:', {
+        hasToken: !!adminToken,
+        hasUser: !!adminUser,
+        tokenLength: adminToken ? adminToken.length : 0,
+        userData: adminUser ? 'Present' : 'Missing'
+      });
+
+      if (!adminToken || !adminUser) {
+        console.log('❌ AdminRoute: No authentication found');
+        console.log('🔍 Available sessionStorage keys:', Object.keys(sessionStorage));
+        setIsAuthenticated(false);
+        setIsChecking(false);
+        navigate('/admin/login', { replace: true });
+        return;
+      }
+
+      try {
+        const user = JSON.parse(adminUser);
+        console.log('✅ AdminRoute: User authenticated:', user.email);
+        setIsAuthenticated(true);
+        setIsChecking(false);
+      } catch (error) {
+        console.error('❌ AdminRoute: Error parsing user data:', error);
+        setIsAuthenticated(false);
+        setIsChecking(false);
+        navigate('/admin/login', { replace: true });
+      }
+    };
+
+    checkAdminAuth();
+  }, [navigate, location]);
+
+  // Show loading while checking authentication
+  if (isChecking) {
+    return (
+      <div className="admin-route-loading">
+        <div className="loading-spinner"></div>
+        <p>Verifying admin access...</p>
+      </div>
+    );
   }
 
-  // If no token, redirect to login
-  if (!token) {
-    return <Navigate to="/login" replace />;
-  }
-
-  // If user is not admin, redirect to home
-  if (user.role !== 'admin' && user.userType !== 'admin') {
-    return <Navigate to="/" replace />;
-  }
-
-  // User is admin, allow access
-  return children;
+  // Only render children if authenticated
+  return isAuthenticated ? children : null;
 };
 
 export default AdminRoute;

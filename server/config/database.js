@@ -11,9 +11,8 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  acquireTimeout: 60000,
-  timeout: 60000,
-  reconnect: true
+  // ✅ Correct timeout property name
+  connectTimeout: 60000 
 });
 
 // Test database connection
@@ -23,11 +22,11 @@ const testConnection = async () => {
     console.log('✅ MySQL Database connected successfully');
     console.log('📊 Database:', process.env.DB_NAME);
     console.log('🏠 Host:', process.env.DB_HOST);
-    
+
     // Test a simple query
     const [rows] = await connection.execute('SELECT COUNT(*) as userCount FROM users');
     console.log(`👥 Current users in database: ${rows[0].userCount}`);
-    
+
     connection.release();
     return true;
   } catch (error) {
@@ -50,7 +49,7 @@ const initDatabase = async () => {
 
 // Export both the pool and functions
 module.exports = {
-  pool,  // Make sure this is exported
+  pool,
   testConnection,
   initDatabase
 };

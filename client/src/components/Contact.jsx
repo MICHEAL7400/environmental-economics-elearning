@@ -37,7 +37,7 @@ const Contact = () => {
     {
       icon: '📧',
       title: 'Email Us',
-      details: 'hello@ecolearn.org',
+      details: 'Lawrence@ecolearn.org',
       description: 'Send us an email anytime',
       response: 'Within 24 hours'
     },
@@ -51,14 +51,14 @@ const Contact = () => {
     {
       icon: '📞',
       title: 'Phone Support',
-      details: '+234 1 700 0000',
+      details: '+260 7700 30450',
       description: 'Call our support line',
       response: 'During business hours'
     },
     {
       icon: '📍',
       title: 'Regional Offices',
-      details: 'Lagos, Nairobi, Accra',
+      details: 'Lusaka, Nairobi, Accra',
       description: 'Visit us in person',
       response: 'By appointment'
     }
@@ -85,16 +85,16 @@ const Contact = () => {
 
   const regionalOffices = [
     {
-      city: 'Lagos, Nigeria',
+      city: 'Lusaka, Zambia',
       address: '123 Innovation Drive, Yaba',
-      phone: '+234 1 700 0001',
+      phone: '',
       email: 'lagos@ecolearn.org',
       hours: 'Mon-Fri, 8AM-6PM'
     },
     {
-      city: 'Nairobi, Kenya',
-      address: '456 Green Towers, Westlands',
-      phone: '+254 20 123 4567',
+      city: 'Lusaka, Zambia',
+      address: '456 Green Kitwe, Ndola',
+      phone: '+260 7700 30450',
       email: 'nairobi@ecolearn.org',
       hours: 'Mon-Fri, 8AM-6PM'
     },

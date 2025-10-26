@@ -4,36 +4,36 @@ import { Link } from 'react-router-dom';
 const About = () => {
   const team = [
     {
-      name: 'Dr. Amina Bello',
+      name: 'Dr. Joseph Mbayo',
       role: 'Founder & Director',
       expertise: 'Environmental Economics, African Development',
       bio: '15+ years experience in environmental policy across Africa',
       avatar: '👩‍⚖️',
-      country: 'Nigeria'
+      country: 'Lusaka, Zambia'
     },
     {
-      name: 'Prof. James Mwangi',
+      name: 'Prof. Lawrence Machumi',
       role: 'Head of Education',
       expertise: 'Economics Education, Curriculum Development',
       bio: 'Former university professor with passion for accessible education',
       avatar: '👨‍🏫',
-      country: 'Kenya'
+      country: 'Livingstone, Zambia'
     },
     {
-      name: 'Sarah Chengo',
+      name: 'Nestony  Biamungu',
       role: 'Content Lead',
       expertise: 'Environmental Science, Case Study Development',
       bio: 'Specialist in African environmental case studies and research',
       avatar: '👩‍🔬',
-      country: 'Zambia'
+      country: 'Ndola, Zambia'
     },
     {
-      name: 'David Okafor',
+      name: 'Michael Matanda',
       role: 'Technology Director',
       expertise: 'EdTech, Software Development',
       bio: 'Building digital learning platforms for African contexts',
       avatar: '👨‍💻',
-      country: 'Ghana'
+      country: 'Kitwe, Zambia'
     }
   ];
 

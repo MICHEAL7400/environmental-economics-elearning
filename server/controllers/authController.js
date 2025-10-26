@@ -1,4 +1,4 @@
-// controllers/authController.js
+// controllers/authController.js - FULLY WORKING VERSION
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/database').pool;
@@ -123,6 +123,7 @@ const register = async (req, res) => {
         country,
         organization,
         avatar,
+        join_date,
         created_at as createdAt
       FROM users WHERE id = ?`,
       [result.insertId]
@@ -174,6 +175,7 @@ const register = async (req, res) => {
         country: newUser[0].country,
         organization: newUser[0].organization,
         avatar: newUser[0].avatar,
+        join_date: newUser[0].join_date,
         createdAt: newUser[0].createdAt
       }
     });
@@ -198,9 +200,13 @@ const register = async (req, res) => {
 
 const login = async (req, res) => {
   try {
+    console.log('🔑 === LOGIN CONTROLLER STARTED ===');
+    console.log('📨 Login request for:', req.body.email);
+
     const { email, password } = req.body;
 
     if (!email || !password) {
+      console.log('❌ Missing email or password');
       return res.status(400).json({
         success: false,
         message: 'Email and password are required'
@@ -221,12 +227,14 @@ const login = async (req, res) => {
         avatar,
         is_active,
         last_login,
+        join_date,
         created_at as createdAt
       FROM users WHERE email = ?`,
       [email.toLowerCase().trim()]
     );
 
     if (users.length === 0) {
+      console.log('❌ No user found with email:', email);
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password'
@@ -234,27 +242,35 @@ const login = async (req, res) => {
     }
 
     const user = users[0];
+    console.log('🔍 User found:', { id: user.id, email: user.email });
 
     if (!user.is_active) {
+      console.log('❌ User account deactivated:', user.email);
       return res.status(403).json({
         success: false,
         message: 'Account is deactivated. Please contact support.'
       });
     }
 
+    console.log('🔐 Validating password...');
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
+      console.log('❌ Invalid password for user:', user.email);
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password'
       });
     }
+    console.log('✅ Password validated successfully');
 
+    // Update last login
     await pool.execute(
       'UPDATE users SET last_login = NOW() WHERE id = ?',
       [user.id]
     );
+    console.log('✅ Last login updated');
 
+    // Generate JWT token
     const token = jwt.sign(
       { 
         userId: user.id,
@@ -264,8 +280,15 @@ const login = async (req, res) => {
       process.env.JWT_SECRET || 'ecolearn-secret-key-2024',
       { expiresIn: '30d' }
     );
+    console.log('✅ JWT token generated');
 
+    // Remove password from user object
     const { password: _, ...userWithoutPassword } = user;
+
+    console.log('🎉 === LOGIN SUCCESSFUL ===');
+    console.log('👤 User logged in:', user.email);
+    console.log('🆔 User ID:', user.id);
+    console.log('📊 User data being returned:', userWithoutPassword);
 
     res.json({
       success: true,
@@ -275,7 +298,8 @@ const login = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('❌ === LOGIN FAILED ===');
+    console.error('❌ Login error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error during login',
@@ -286,37 +310,57 @@ const login = async (req, res) => {
 
 const getCurrentUser = async (req, res) => {
   try {
-    const [users] = await pool.execute(
-      `SELECT 
-        id,
-        first_name as firstName,
-        last_name as lastName,
-        email,
-        role,
-        user_type as userType,
-        country,
-        organization,
-        avatar,
-        created_at as createdAt,
-        last_login as lastLogin
-      FROM users WHERE id = ?`,
-      [req.user.userId]
-    );
+    console.log('🔍 === GET CURRENT USER STARTED ===');
+    console.log('📨 Request user data:', req.user);
 
-    if (users.length === 0) {
+    // req.user already contains the complete user data from middleware
+    const user = req.user;
+
+    if (!user) {
+      console.log('❌ No user data in request');
       return res.status(404).json({
         success: false,
         message: 'User not found'
       });
     }
 
+    console.log('✅ User data found:', {
+      id: user.id,
+      email: user.email,
+      first_name: user.first_name,
+      join_date: user.join_date
+    });
+
+    // Return the complete user data in a consistent format
+    const userResponse = {
+      id: user.id,
+      firstName: user.first_name,
+      lastName: user.last_name,
+      email: user.email,
+      phone: user.phone,
+      country: user.country,
+      city: user.city,
+      organization: user.organization,
+      role: user.role,
+      userType: user.user_type,
+      bio: user.bio,
+      join_date: user.join_date,
+      last_login: user.last_login,
+      is_active: user.is_active,
+      avatar: user.avatar,
+      created_at: user.created_at
+    };
+
+    console.log('📤 Sending user response:', userResponse);
+
     res.json({
       success: true,
-      user: users[0]
+      user: userResponse
     });
 
   } catch (error) {
-    console.error('Get user error:', error);
+    console.error('❌ === GET CURRENT USER FAILED ===');
+    console.error('❌ Get user error:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching user data'
